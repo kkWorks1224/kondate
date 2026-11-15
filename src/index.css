@@ -1,0 +1,150 @@
+@import 'tailwindcss';
+
+/* デザイントークン ------------------------------------------------------- */
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', 'Yu Gothic UI', sans-serif;
+  --font-num: ui-rounded, 'SF Pro Rounded', -apple-system, 'Hiragino Maru Gothic ProN', 'Hiragino Sans', sans-serif;
+
+  --color-canvas: #f4f5f2;
+  --color-surface: #ffffff;
+  --color-sunken: #eceee9;
+  --color-ink: #1c1c1e;
+  --color-ink-2: #565a55;
+  --color-ink-3: #7d817b;
+  --color-line: rgb(28 28 30 / 0.09);
+  --color-line-strong: rgb(28 28 30 / 0.16);
+
+  --color-basil: #2e6a4f;
+  --color-basil-ink: #1f4d38;
+  --color-basil-soft: #e3eee7;
+  --color-amber: #9a5b00;
+  --color-amber-soft: #fbf0dc;
+  --color-raw: #b42318;
+  --color-raw-soft: #fdeceb;
+  --color-sky: #245e9e;
+  --color-sky-soft: #e5eef8;
+
+  --radius-card: 18px;
+  --radius-ctl: 12px;
+
+  --shadow-card: 0 1px 2px rgb(16 24 16 / 0.04), 0 2px 8px rgb(16 24 16 / 0.04);
+  --shadow-lift: 0 8px 28px rgb(16 24 16 / 0.12), 0 1px 3px rgb(16 24 16 / 0.06);
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+:root {
+  color-scheme: light;
+  -webkit-tap-highlight-color: transparent;
+  font-feature-settings: 'palt' 1;
+}
+
+html,
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  overscroll-behavior-y: none;
+}
+
+.num {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* 適度なガラス素材：ナビゲーションとシートのみに限定 */
+.glass {
+  background: rgb(250 251 249 / 0.72);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+
+.surface {
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+/* 押下フィードバック */
+.press {
+  transition: transform 140ms var(--ease-out), background-color 160ms ease, opacity 160ms ease;
+}
+.press:active {
+  transform: scale(0.97);
+}
+
+:focus-visible {
+  outline: 2.5px solid var(--color-basil);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+a,
+input,
+select,
+label,
+summary {
+  touch-action: manipulation;
+}
+
+h1,
+h2 {
+  text-wrap: balance;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 0px);
+}
+
+/* スケルトン */
+.skeleton {
+  background: linear-gradient(90deg, #e9ebe6 0%, #f3f4f1 40%, #e9ebe6 80%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s linear infinite;
+  border-radius: 8px;
+}
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* タイムラインの縞（待ち時間） */
+.stripes {
+  background-image: repeating-linear-gradient(135deg, rgb(0 0 0 / 0.05) 0 4px, transparent 4px 8px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+  .press:active {
+    transform: none;
+  }
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+}
