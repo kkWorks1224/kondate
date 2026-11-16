@@ -49,6 +49,18 @@ export default function Settings() {
     <Page title="設定" subtitle="プロフィール・調理器具・データ" back="/">
       <div className="grid grid-cols-[minmax(0,1fr)] gap-x-6 lg:grid-cols-2">
         <div>
+          <Group title="アカウント" footer="データは Cloudflare D1 に保存され、同じ Google アカウントでログインした端末と同期されます。オフライン中の変更は端末に保存し、つながったときに送信します。">
+            {user && (
+              <Row>
+                {user.picture ? <img src={user.picture} alt="" referrerPolicy="no-referrer" className="h-10 w-10 rounded-full" /> : <span className="flex h-10 w-10 items-center justify-center rounded-full bg-basil text-white">{(user.name || user.email).charAt(0)}</span>}
+                <span className="min-w-0 flex-1"><span className="block text-[15px] font-semibold">{user.name}</span><span className="block truncate text-[13px] text-ink-3">{user.email}</span></span>
+              </Row>
+            )}
+            <Row><SyncBadge className="flex-1 text-[14px]" /></Row>
+            <Row onClick={() => void pull().then(() => toast('最新の状態を確認しました')).catch(() => toast('同期できませんでした', 'error'))}><RefreshCw size={18} className="text-basil" aria-hidden /><span className="flex-1 text-[15px] font-medium text-basil">今すぐ同期</span></Row>
+            <Row onClick={async () => { setBusy(true); await logout() }}><LogOut size={18} className="text-ink-2" aria-hidden /><span className="flex-1 text-[15px] font-medium">{busy ? 'ログアウト中…' : 'ログアウト'}</span></Row>
+            <Row onClick={() => setDelAcc(true)}><UserX size={18} className="text-raw" aria-hidden /><span className="flex-1 text-[15px] font-medium text-raw">アカウントとデータを削除</span></Row>
+          </Group>
           <Group title="生活と予算" footer="希望体重は表示のみに使い、極端なカロリー制限は設定しません。">
             <div className="grid grid-cols-2 gap-3 p-4">
               <Field label="自炊の予算（週）"><input type="number" className={cx(inputCls, 'num')} value={p.weeklyGroceryBudget} onChange={(e) => update({ weeklyGroceryBudget: Number(e.target.value) })} /></Field>
@@ -78,18 +90,6 @@ export default function Settings() {
                 </select>
               </Field>
             </div>
-          </Group>
-          <Group title="アカウント" footer="データは Cloudflare D1 に保存され、同じ Google アカウントでログインした端末と同期されます。オフライン中の変更は端末に保存し、つながったときに送信します。">
-            {user && (
-              <Row>
-                {user.picture ? <img src={user.picture} alt="" referrerPolicy="no-referrer" className="h-10 w-10 rounded-full" /> : <span className="flex h-10 w-10 items-center justify-center rounded-full bg-basil text-white">{(user.name || user.email).charAt(0)}</span>}
-                <span className="min-w-0 flex-1"><span className="block text-[15px] font-semibold">{user.name}</span><span className="block truncate text-[13px] text-ink-3">{user.email}</span></span>
-              </Row>
-            )}
-            <Row><SyncBadge className="flex-1 text-[14px]" /></Row>
-            <Row onClick={() => void pull().then(() => toast('最新の状態を確認しました')).catch(() => toast('同期できませんでした', 'error'))}><RefreshCw size={18} className="text-basil" aria-hidden /><span className="flex-1 text-[15px] font-medium text-basil">今すぐ同期</span></Row>
-            <Row onClick={async () => { setBusy(true); await logout() }}><LogOut size={18} className="text-ink-2" aria-hidden /><span className="flex-1 text-[15px] font-medium">{busy ? 'ログアウト中…' : 'ログアウト'}</span></Row>
-            <Row onClick={() => setDelAcc(true)}><UserX size={18} className="text-raw" aria-hidden /><span className="flex-1 text-[15px] font-medium text-raw">アカウントとデータを削除</span></Row>
           </Group>
           <Group title="データ">
             <Row><span className="flex-1 text-[14px] text-ink-2">AI：{ai.label}（通信できないときはルールベース）</span></Row>

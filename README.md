@@ -1,13 +1,41 @@
-# 今週の献立（プロトタイプ）
+# 今週の献立
 
-週間献立・レシピ・**複数料理の一括調理工程の最適化**・在庫／買い物／作り置き・セブン-イレブン昼食・健康ログを一体化した、個人向け食生活管理Webアプリのプロトタイプです。
+週間献立・レシピ・**複数料理の一括調理工程の最適化**・在庫／買い物／作り置き・セブン-イレブン昼食・健康ログを一体化した、個人向けの自炊管理 Web アプリです。スマホ・パソコンのブラウザから使え、Google アカウントでログインすると端末間で同期されます。
+
+- 公開 URL：https://kondate.kkworks1224.workers.dev
+- ホーム画面に追加するとアプリとして起動できます（PWA）
 
 ```bash
 npm install
-npm run dev      # http://localhost:5188
+npm run db:migrate:local
+npm run dev      # http://localhost:5188 、/auth/dev で開発用ログイン（.dev.vars に DEV_LOGIN=1）
 npm test         # エンジン・連動ロジックのテスト（19件）
-npm run build    # 本番ビルド（dist/）
+npm run deploy   # ビルド → D1 マイグレーション → Cloudflare へデプロイ
 ```
+
+## Web 版で加えたこと
+- **Google 認証のみ**でログイン（OpenID Connect の ID トークンを Worker で Google の公開鍵により検証。クライアントシークレット不要）
+- **端末間の同期**：状態をユーザーごとに1文書として Cloudflare D1 に保存。変更は1.2秒まとめて送信し、版番号（rev）で別端末の古い状態による上書きを防ぐ。衝突時は新しく更新された方を採用。画面に戻ったとき・1分ごとに他端末の変更を取り込む
+- **オフライン**：端末にキャッシュし、つながったときに送信。同期状態はサイドバー・設定に表示
+- **Workers AI**（Llama 3.3 70B）
+  - レシピ作成：AI は材料・分量・切り方・調理法だけを決め、工程・器具・衛生上の順序（生肉→洗浄→加熱、中心温度）はアプリのビルダーが組み立てる。食材 ID は一覧から選ばせ、サーバで検証
+  - 献立の助言：予算・在庫・冷凍適性の制約はルールで守って組み、AI が料理名や日を挙げた具体的な助言を付ける
+  - 通信できない・上限に達したときはルールベースに自動で切り替え
+- **フリック操作**：買い物リストは右で購入済み（もう一度で未購入）・左で削除（手動追加分）、作り置きは右で「食べた」、在庫は左で削除
+- **全画面スケルトン**：JS 読み込み前（HTML 埋め込み）→ ログイン確認・初回同期中 → 各画面の遅延読み込み・AI 処理中
+- PWA（マニフェスト・アイコン・Service Worker）、CSP などのセキュリティヘッダー、AI と同期の回数制限
+
+## 技術選定と理由
+| 領域 | 採用 | 理由 |
+|---|---|---|
+| 実行基盤 | Cloudflare Workers + Static Assets | 画面と API を1つで配信でき同一オリジン。D1・AI・Rate Limiting を1つの設定で扱える |
+| データベース | Cloudflare D1 | Workers から直接使える SQLite。個人の状態（数百KB）を1行で保持し、版番号付きの条件付き更新で衝突を検出できる |
+| AI | Workers AI（`@cf/meta/llama-3.3-70b-instruct-fp8-fast`） | API キー不要、日本語と JSON Schema 出力に対応 |
+| API | Hono | Workers 向けの軽量ルーター。Cookie・セキュリティヘッダーのミドルウェアがある |
+| 画面 | React + TypeScript + Vite + Tailwind CSS | 画面数が多く、部品とデザイントークンを共有しやすい。`@cloudflare/vite-plugin` で開発中も本番と同じランタイムで動く |
+| アニメーション | Motion | フリック・シート・ページ遷移・並べ替えを1つで扱え、OS の「動きを減らす」に従う |
+| 状態管理 | Zustand（persist） | 小さく、同期処理から React の外でも読み書きできる |
+| グラフ | Recharts | 体重・栄養の推移を少ないコードで描ける |
 
 ## 画面
 | パス | 画面 | 主な操作 |
@@ -53,7 +81,7 @@ src/
 - 体重などの過去ログはサンプル（グラフに「サンプルデータを含む」表示）
 - 健康目標：BMI約20・体脂肪率9%のため減量目標は設定せず、維持エネルギー＋たんぱく質 体重×1.6g
 
-## Cloudflare への移行方針
+## Cloudflare 構成（実装済み）
 - 静的ビルドは Cloudflare Pages（SPA フォールバック）でそのまま配信可能
 - `services/storage` を D1 経由の API アダプタに差し替え（`types/` を元にテーブル化：recipes, inventory_lots, shopping_items, expenses, meal_logs, health_logs, cook_sessions ほか）
 - `services/ai` に `RemoteAIProvider`（Workers の `/api/ai/*` → LLM）を実装し、返却 JSON を `buildRecipe` / `planIssues` で検証・正規化
