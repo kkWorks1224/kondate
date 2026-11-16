@@ -11,6 +11,7 @@ type Env = {
   ASSETS: Fetcher;
   GOOGLE_CLIENT_ID: string;
   AI_MODEL: string;
+  VISION_MODEL: string;
   DEV_LOGIN?: string;
   AI_LIMITER?: RateLimit;
   SYNC_LIMITER?: RateLimit;
@@ -389,6 +390,85 @@ app.post("/api/ai/plan-advice", async (c) => {
     return c.json({ advice });
   } catch (e) {
     console.error("ai advice failed", e);
+    return c.json({ error: "ai_failed" }, 502);
+  }
+});
+
+// ---------- 商品（バーコード） ----------
+// JAN コードから Open Food Facts（誰でも編集できる公開の食品データベース）を引く。
+// 見つかった値は「参考値」として登録画面に入れ、ユーザーが確認・修正してから保存する。
+app.get("/api/products/lookup", async (c) => {
+  const jan = (c.req.query("jan") ?? "").replace(/\D/g, "");
+  if (!/^\d{8}$|^\d{12,14}$/.test(jan)) return c.json({ error: "bad_request" }, 400);
+  const cache = (caches as any).default as Cache;
+  const key = new Request(`https://cache.internal/off/${jan}`);
+  const hit = await cache.match(key);
+  if (hit) return c.json(await hit.json(), 200, { "cache-control": "private, max-age=3600" });
+  let body: Record<string, unknown> = { found: false };
+  try {
+    const r = await fetch(
+      `https://world.openfoodfacts.org/api/v2/product/${jan}.json?fields=product_name,product_name_ja,product_name_en,brands,quantity,serving_size,nutriments`,
+      { headers: { "user-agent": "kondate-web/1.0 (personal meal planner)" }, cf: { cacheTtl: 86400 } } as RequestInit,
+    );
+    if (r.ok) {
+      const d = (await r.json()) as any;
+      const p = d?.product;
+      if (d?.status === 1 && p) {
+        const n = p.nutriments ?? {};
+        // 1食（1個）あたりがあれば優先、なければ100gあたり
+        const per = n["energy-kcal_serving"] != null ? "serving" : "100g";
+        const v = (k: string) => {
+          const x = Number(n[`${k}_${per}`]);
+          return Number.isFinite(x) ? Math.round(x * 10) / 10 : null;
+        };
+        body = {
+          found: true,
+          name: clean(p.product_name_ja || p.product_name || p.product_name_en || p.brands, 60),
+          brand: clean(p.brands, 40),
+          quantity: clean(p.quantity, 30),
+          per,
+          nutrients: { kcal: v("energy-kcal"), protein: v("proteins"), fat: v("fat"), carbs: v("carbohydrates"), fiber: v("fiber"), salt: v("salt") },
+        };
+      }
+    }
+  } catch (e) {
+    console.error("off lookup failed", e);
+    return c.json({ found: false, error: "unavailable" }, 502);
+  }
+  const res = c.json(body, 200, { "cache-control": "private, max-age=3600" });
+  await cache.put(key, new Response(JSON.stringify(body), { headers: { "content-type": "application/json", "cache-control": "max-age=86400" } }));
+  return res;
+});
+
+// 栄養成分表示の写真を Workers AI（画像対応モデル）で読み取る
+app.post("/api/ai/label", async (c) => {
+  const body = await c.req.json<{ image?: string }>();
+  const img = typeof body.image === "string" ? body.image : "";
+  if (!/^data:image\/(jpeg|png|webp);base64,/.test(img) || img.length > 2_400_000) return c.json({ error: "bad_request" }, 400);
+  const blocked = await aiGuard(c);
+  if (blocked) return blocked;
+  const prompt = [
+    "この写真は日本の食品パッケージです。栄養成分表示（または商品名）を読み取り、次のキーだけを持つ JSON を出力してください。",
+    '{"name": 商品名（見えなければ ""）, "per": 表示の単位（例 "1個当たり" "100g当たり"）, "kcal": エネルギー, "protein": たんぱく質g, "fat": 脂質g, "carbs": 炭水化物g（糖質と食物繊維に分かれていれば合計）, "fiber": 食物繊維g（無ければ null）, "salt": 食塩相当量g}',
+    "数値は表示どおりに読み、推測で埋めないこと。読めない項目は null。JSON 以外は出力しない。",
+  ].join("\n");
+  try {
+    const out: any = await c.env.AI.run(c.env.VISION_MODEL as any, {
+      messages: [{ role: "user", content: [{ type: "text", text: prompt }, { type: "image_url", image_url: { url: img } }] }],
+      max_tokens: 400,
+      temperature: 0,
+    } as any);
+    const r = out?.response ?? out?.choices?.[0]?.message?.content;
+    const j = typeof r === "object" && r ? r : JSON.parse(String(r ?? "").match(/\{[\s\S]*\}/)?.[0] ?? "{}");
+    const num = (x: unknown) => {
+      const v = typeof x === "number" ? x : Number(String(x ?? "").replace(/[^\d.]/g, ""));
+      return Number.isFinite(v) && String(x ?? "").trim() !== "" ? Math.round(v * 10) / 10 : null;
+    };
+    const res = { name: clean(j.name, 60), per: clean(j.per, 20), nutrients: { kcal: num(j.kcal), protein: num(j.protein), fat: num(j.fat), carbs: num(j.carbs), fiber: num(j.fiber), salt: num(j.salt) } };
+    if (Object.values(res.nutrients).every((v) => v === null) && !res.name) return c.json({ error: "unreadable" }, 422);
+    return c.json(res);
+  } catch (e) {
+    console.error("ai label failed", e);
     return c.json({ error: "ai_failed" }, 502);
   }
 });

@@ -14,7 +14,7 @@ import { uid } from '../lib/format'
 import { ai } from '../services/ai'
 import { localStorageAdapter, STORAGE_KEY } from '../services/storage'
 import type {
-  CookHistory, CookMode, CookSession, Expense, HealthLog, InventoryLot, MealLog, MealSlot, PreparedDish, Profile, Recipe, ShoppingItem, StorageLoc, Tool, WeekPlan,
+  CookHistory, CookMode, CookSession, Expense, HealthLog, InventoryLot, MealLog, MealSlot, PreparedDish, Profile, Recipe, SevenProduct, ShoppingItem, StorageLoc, Tool, WeekPlan,
 } from '../types'
 
 export interface LunchFavorite {
@@ -38,6 +38,8 @@ export interface AppData {
   health: HealthLog[]
   lunchFavorites: LunchFavorite[]
   aiGeneration: number
+  /** 自分で登録した商品（バーコードで読み取った商品など） */
+  myProducts: SevenProduct[]
 }
 
 type Result = { ok: true; message?: string } | { ok: false; message: string }
@@ -82,6 +84,8 @@ interface Actions {
   recordBreakfast: (presetId: string | 'skip', date: string) => Result
   deleteMeal: (id: string) => void
   restoreMeal: (meal: AppData['meals'][number], expense?: Expense) => void
+  saveProduct: (p: SevenProduct) => void
+  deleteProduct: (id: string) => void
   toggleLunchFavorite: (productIds: string[]) => void
   discardPrepared: (id: string) => void
   // ライフログ
@@ -93,7 +97,7 @@ export type Store = AppData & Actions
 
 function initial(): AppData {
   const s = buildSeed()
-  return { schema: 1, ...s, shopping: [], session: undefined, cookHistory: [], lunchFavorites: [{ key: 'p05|p22', productIds: ['p05', 'p22'] }], aiGeneration: 1 }
+  return { schema: 1, ...s, shopping: [], session: undefined, cookHistory: [], lunchFavorites: [{ key: 'p05|p22', productIds: ['p05', 'p22'] }], aiGeneration: 1, myProducts: [] }
 }
 
 /** 献立・在庫の変更後に買い物リストを再計算（購入済みは保持） */
@@ -399,13 +403,14 @@ export const useStore = create<Store>()(
       },
       recordLunch: (productIds, date, replace) => {
         const s = get()
-        const ps = productIds.map((id) => SEVEN_MAP[id]).filter(Boolean)
+        const mine = Object.fromEntries((s.myProducts ?? []).map((p) => [p.id, p]))
+        const ps = productIds.map((id) => mine[id] ?? SEVEN_MAP[id]).filter(Boolean)
         if (!ps.length) return { ok: false, message: '商品を選んでください' }
         const existing = s.meals.filter((m) => m.date === date && m.slot === 'lunch')
         if (existing.length && !replace) return { ok: false, message: 'exists' }
         const price = ps.reduce((a, p) => a + p.price, 0)
         const id = uid('meal')
-        const meal: MealLog = { id, date, slot: 'lunch', label: 'セブン-イレブン', items: ps.map((p) => ({ name: p.name, refId: p.id, kind: 'product' })), nutrients: comboNutrients(ps), basis: 'demo-label', price }
+        const meal: MealLog = { id, date, slot: 'lunch', label: ps.some((p) => p.user) ? '昼食（購入）' : 'セブン-イレブン', items: ps.map((p) => ({ name: p.name, refId: p.id, kind: 'product' })), nutrients: comboNutrients(ps), basis: 'demo-label', price }
         const ex = new Set(existing.map((m) => m.id))
         set({
           meals: [...s.meals.filter((m) => !ex.has(m.id)), meal],
@@ -457,6 +462,14 @@ export const useStore = create<Store>()(
         }),
       discardPrepared: (id) => set((s) => ({ prepared: s.prepared.filter((p) => p.id !== id) })),
 
+      /* ---------- 自分の商品 ---------- */
+      saveProduct: (p) =>
+        set((s) => {
+          const list = s.myProducts ?? []
+          return { myProducts: list.some((x) => x.id === p.id) ? list.map((x) => (x.id === p.id ? p : x)) : [...list, p] }
+        }),
+      deleteProduct: (id) => set((s) => ({ myProducts: (s.myProducts ?? []).filter((p) => p.id !== id) })),
+
       /* ---------- ライフログ ---------- */
       upsertHealth: (log) =>
         set((s) => {
@@ -475,8 +488,8 @@ export const useStore = create<Store>()(
       skipHydration: true,
       storage: createJSONStorage(() => localStorageAdapter),
       partialize: (s) => {
-        const { schema, profile, recipes, tools, inventory, prepared, plan, shopping, expenses, session, cookHistory, meals, health, lunchFavorites, aiGeneration } = s
-        return { schema, profile, recipes, tools, inventory, prepared, plan, shopping, expenses, session, cookHistory, meals, health, lunchFavorites, aiGeneration }
+        const { schema, profile, recipes, tools, inventory, prepared, plan, shopping, expenses, session, cookHistory, meals, health, lunchFavorites, aiGeneration, myProducts } = s
+        return { schema, profile, recipes, tools, inventory, prepared, plan, shopping, expenses, session, cookHistory, meals, health, lunchFavorites, aiGeneration, myProducts }
       },
     },
   ),

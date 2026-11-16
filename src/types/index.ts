@@ -295,14 +295,22 @@ export interface MealLog {
 
 export interface SevenProduct {
   id: ID
-  code: string // デモ用コード
+  code: string // デモ用コード、または JAN
   name: string
   category: 'おにぎり' | '弁当・丼' | 'パン' | '麺' | 'サラダ' | '惣菜' | 'たんぱく質' | 'スープ' | '飲料' | 'デザート'
   role: 'staple' | 'protein' | 'veg' | 'soup' | 'drink' | 'extra'
   price: number
   nutrients: Omit<Nutrients, 'vegG' | 'calcium' | 'iron' | 'vitB1' | 'vitC'> & { vegG?: number }
   fetchedOn: ISODate
-  demo: true
+  /** 目安値のデモ商品 */
+  demo?: boolean
+  /** 自分で登録した商品（バーコード・写真・手入力） */
+  user?: boolean
+  jan?: string
+  /** 栄養値の単位（例：1個当たり） */
+  per?: string
+  /** 値の出どころ */
+  basis?: 'demo' | 'label-photo' | 'openfoodfacts' | 'manual'
 }
 
 export interface LunchCombo {

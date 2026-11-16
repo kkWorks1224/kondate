@@ -6,7 +6,7 @@ import { Button } from '../components/ui/Button'
 import { Empty, Group, inputCls, Meter, Row, Tag } from '../components/ui/bits'
 import { toast } from '../components/ui/Toast'
 import { BREAKFAST_PRESETS } from '../data/seed'
-import { SEVEN_PRODUCTS, SEVEN_MAP } from '../data/seven'
+import { useProducts } from '../features/products/useProducts'
 import { INGREDIENT_MAP } from '../data/ingredients'
 import { movingAverage, SLOT_LABEL } from '../engine/health'
 import { MODE_LABEL, suggestLunch } from '../engine/lunch'
@@ -163,7 +163,8 @@ function LunchStrip() {
   const budget = useStore((s) => s.profile.lunchBudget)
   const meals = useStore((s) => s.meals)
   const targets = useTargets()
-  const combos = useMemo(() => suggestLunch(SEVEN_PRODUCTS, budget, targets.kcal), [budget, targets.kcal])
+  const products = useProducts()
+  const combos = useMemo(() => suggestLunch(products.all, budget, targets.kcal), [products.all, budget, targets.kcal])
   const logged = meals.find((m) => m.date === t && m.slot === 'lunch')
   return (
     <section className="mb-6" aria-labelledby="lunch-h">
@@ -185,7 +186,7 @@ function LunchStrip() {
           {combos.map((c) => (
             <Link key={c.id} to={`/lunch?pick=${c.id}`} className="surface press w-[72%] shrink-0 snap-start p-4 sm:w-auto">
               <p className="text-[13px] font-semibold text-basil">{MODE_LABEL[c.mode as keyof typeof MODE_LABEL]}</p>
-              <p className="mt-1 line-clamp-2 text-[14px] leading-snug font-medium">{c.productIds.map((id) => SEVEN_MAP[id].name).join(' ＋ ')}</p>
+              <p className="mt-1 line-clamp-2 text-[14px] leading-snug font-medium">{c.productIds.map((id) => products.map[id]?.name).join(' ＋ ')}</p>
               <p className="mt-2 flex items-baseline gap-2">
                 <span className="num text-[18px] font-bold">{yen(c.price)}</span>
                 <span className="num text-[13px] text-ink-2">P {Math.round(c.nutrients.protein)}g</span>

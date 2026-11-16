@@ -25,6 +25,7 @@
   ],
   "vars": {
     "GOOGLE_CLIENT_ID": "674715201485-v8pugkcd7a0sc6tflormd7p9mss7j8u7.apps.googleusercontent.com",
-    "AI_MODEL": "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+    "AI_MODEL": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+    "VISION_MODEL": "@cf/meta/llama-4-scout-17b-16e-instruct"
   }
 }

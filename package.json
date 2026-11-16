@@ -13,6 +13,8 @@
     "deploy": "npm run build && wrangler d1 migrations apply kondate --remote && wrangler deploy"
   },
   "dependencies": {
+    "@zxing/browser": "^0.2.1",
+    "@zxing/library": "^0.23.0",
     "hono": "^4.13.18",
     "lucide-react": "^1.73.0",
     "motion": "^14.14.0",
