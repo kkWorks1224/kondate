@@ -59,7 +59,11 @@ function reasonsFor(ps: SevenProduct[], s: ReturnType<typeof scoreCombo>, budget
 }
 
 /** 予算内で昼食として成立する組み合わせ（主食1＋おかず/野菜/汁物/飲料から最大2）を全探索 */
-export function suggestLunch(products: SevenProduct[], budget: number, targetKcal: number, exclude: string[] = []): LunchCombo[] {
+/**
+ * 観点（バランス・高たんぱく・節約）ごとに上位 perMode 件を返す（観点の順に並ぶ）。
+ * 同じ組み合わせは観点をまたいでも1回だけ。同じ主食は1つの観点で2回までにして、候補に幅を持たせる。
+ */
+export function suggestLunch(products: SevenProduct[], budget: number, targetKcal: number, exclude: string[] = [], perMode = 1): LunchCombo[] {
   const pool = products.filter((p) => !exclude.includes(p.id))
   const staples = pool.filter((p) => p.role === 'staple')
   const others = pool.filter((p) => p.role !== 'staple')
@@ -78,18 +82,27 @@ export function suggestLunch(products: SevenProduct[], budget: number, targetKca
   const scored = valid.map((c) => ({ c, s: scoreCombo(c, budget, targetKcal) })).filter(({ s }) => s.n.kcal >= targetKcal * 0.2)
   const result: LunchCombo[] = []
   const used = new Set<string>()
+  const keyOf = (c: SevenProduct[]) => c.map((p) => p.id).sort().join()
   for (const mode of ['balance', 'protein', 'budget'] as LunchMode[]) {
     const [wh, wm, wb] = WEIGHTS[mode]
     const ranked = scored
       .map((x) => ({ ...x, total: wh * x.s.health + wm * x.s.muscle + wb * x.s.budget }))
       .sort((a, b) => b.total - a.total)
-    const pick = ranked.find((x) => !used.has(x.c.map((p) => p.id).sort().join())) ?? ranked[0]
-    if (!pick) continue
-    used.add(pick.c.map((p) => p.id).sort().join())
-    result.push({
-      id: `${mode}-${pick.c.map((p) => p.id).join('-')}`, mode, productIds: pick.c.map((p) => p.id), price: pick.s.price, nutrients: pick.s.n,
-      scores: { health: pick.s.health, muscle: pick.s.muscle, budget: pick.s.budget, total: round(pick.total) }, reasons: reasonsFor(pick.c, pick.s, budget),
-    })
+    const staples = new Map<string, number>()
+    let picked = 0
+    for (const pick of ranked) {
+      if (picked >= perMode) break
+      const key = keyOf(pick.c)
+      const staple = pick.c[0].id
+      if (used.has(key) || (staples.get(staple) ?? 0) >= 2) continue
+      used.add(key)
+      staples.set(staple, (staples.get(staple) ?? 0) + 1)
+      picked++
+      result.push({
+        id: `${mode}-${pick.c.map((p) => p.id).join('-')}`, mode, productIds: pick.c.map((p) => p.id), price: pick.s.price, nutrients: pick.s.n,
+        scores: { health: pick.s.health, muscle: pick.s.muscle, budget: pick.s.budget, total: round(pick.total) }, reasons: reasonsFor(pick.c, pick.s, budget),
+      })
+    }
   }
   return result
 }

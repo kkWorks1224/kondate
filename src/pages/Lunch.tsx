@@ -7,7 +7,9 @@ import { Empty, inputCls, Meter, Tag } from '../components/ui/bits'
 import { Sheet } from '../components/ui/Sheet'
 import { toast } from '../components/ui/Toast'
 import { SEVEN_BY_CODE, SEVEN_MAP, SEVEN_PRODUCTS } from '../data/seven'
-import { comboNutrients, MODE_LABEL, scoreCombo, suggestLunch } from '../engine/lunch'
+import { comboNutrients, MODE_LABEL, scoreCombo, suggestLunch, type LunchMode } from '../engine/lunch'
+import { Segmented } from '../components/ui/Segmented'
+import { AnimatePresence, motion } from 'motion/react'
 import { add, recipeNutrition, ZERO } from '../engine/nutrition'
 import { fmtMD, today, weekday } from '../lib/date'
 import { cx, r1, yen } from '../lib/format'
@@ -29,7 +31,13 @@ export default function Lunch() {
   const [exclude, setExclude] = useState<string[]>([])
   const [builder, setBuilder] = useState(false)
   const [confirmIds, setConfirmIds] = useState<string[] | null>(null)
-  const combos = useMemo(() => suggestLunch(SEVEN_PRODUCTS, budget, targets.kcal, exclude), [budget, targets.kcal, exclude])
+  const [mode, setMode] = useState<'all' | LunchMode>('all')
+  const [limit, setLimit] = useState(6)
+  // 観点ごとに最大12件。「すべて」は各観点の上位3件、観点を選ぶと6件ずつ「もっと見る」で増やす
+  const allCombos = useMemo(() => suggestLunch(SEVEN_PRODUCTS, budget, targets.kcal, exclude, 12), [budget, targets.kcal, exclude])
+  const byMode = (m: LunchMode) => allCombos.filter((c) => c.mode === m)
+  const combos = mode === 'all' ? (['balance', 'protein', 'budget'] as LunchMode[]).flatMap((m) => byMode(m).slice(0, 3)) : byMode(mode).slice(0, limit)
+  const moreLeft = mode === 'all' ? allCombos.length - combos.length : byMode(mode).length - combos.length
   const todayLunch = meals.find((m) => m.date === t && m.slot === 'lunch')
   const history = meals.filter((m) => m.slot === 'lunch').sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8)
   const picked = sp.get('pick')
@@ -53,12 +61,31 @@ export default function Lunch() {
       <PairWithDinner />
 
       <div className="mb-2 flex items-end justify-between px-1">
-        <h2 className="text-[17px] font-bold">今日の候補</h2>
-        <button className="text-[13px] font-semibold text-basil cursor-pointer" onClick={() => setExclude(combos.flatMap((c) => c.productIds.slice(0, 1)))}>別の組み合わせ</button>
+        <h2 className="text-[17px] font-bold">今日の候補<span className="num ml-2 text-[14px] font-normal text-ink-3">{allCombos.length}通り</span></h2>
+        <button className="text-[13px] font-semibold text-basil cursor-pointer" onClick={() => { setExclude(allCombos.slice(0, 12).flatMap((c) => c.productIds.slice(0, 1))); setLimit(6) }}>主食を変えて探す</button>
       </div>
-      <div className="mb-6 grid gap-3 md:grid-cols-3">
-        {combos.map((c) => <ComboCard key={c.id} c={c} highlight={picked === c.id} fav={isFav(c.productIds)} onFav={() => toggleFav(c.productIds)} onRecord={() => doRecord(c.productIds)} recorded={!!todayLunch} />)}
-      </div>
+      <Segmented label="候補の観点" className="mb-3" value={mode} onChange={(v) => { setMode(v); setLimit(6) }} options={[
+        { value: 'all', label: 'すべて' },
+        { value: 'balance', label: 'バランス', count: byMode('balance').length },
+        { value: 'protein', label: '高たんぱく', count: byMode('protein').length },
+        { value: 'budget', label: '節約', count: byMode('budget').length },
+      ]} />
+      <motion.div layout className="mb-3 grid gap-3 md:grid-cols-3">
+        <AnimatePresence initial={false} mode="popLayout">
+          {combos.map((c, i) => (
+            <motion.div key={c.id} layout initial={{ opacity: 0, y: 10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1, transition: { type: 'spring', duration: 0.4, bounce: 0.15, delay: Math.min(i, 8) * 0.025 } }} exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.12 } }}>
+              <ComboCard c={c} rank={mode === 'all' ? (i % 3) + 1 : i + 1} highlight={picked === c.id} fav={isFav(c.productIds)} onFav={() => toggleFav(c.productIds)} onRecord={() => doRecord(c.productIds)} recorded={!!todayLunch} />
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </motion.div>
+      {!combos.length && <div className="surface mb-3"><Empty icon={<Search size={24} />} title="予算内の組み合わせがありません" body="設定で昼食の予算を見直すか、最初の候補に戻してください。" /></div>}
+      {moreLeft > 0 && (
+        <Button variant="secondary" className="mb-6 w-full" onClick={() => (mode === 'all' ? setMode('balance') : setLimit(limit + 6))}>
+          {mode === 'all' ? `観点別にもっと見る（あと${moreLeft}通り）` : `もっと見る（あと${moreLeft}通り）`}
+        </Button>
+      )}
+      {!moreLeft && <div className="mb-6" />}
       {exclude.length > 0 && <button className="-mt-3 mb-6 px-1 text-[13px] text-ink-3 underline cursor-pointer" onClick={() => setExclude([])}>最初の候補に戻す</button>}
 
       <section className="mb-6">
@@ -118,12 +145,12 @@ export default function Lunch() {
   )
 }
 
-function ComboCard({ c, highlight, fav, onFav, onRecord, recorded }: { c: LunchCombo; highlight: boolean; fav: boolean; onFav: () => void; onRecord: () => void; recorded: boolean }) {
+function ComboCard({ c, rank, highlight, fav, onFav, onRecord, recorded }: { c: LunchCombo; rank?: number; highlight: boolean; fav: boolean; onFav: () => void; onRecord: () => void; recorded: boolean }) {
   const ps = c.productIds.map((id) => SEVEN_MAP[id])
   return (
     <article className={cx('surface flex flex-col p-4', highlight && 'ring-2 ring-basil')}>
       <div className="flex items-center justify-between">
-        <p className="text-[14px] font-bold text-basil">{MODE_LABEL[c.mode as keyof typeof MODE_LABEL]}</p>
+        <p className="text-[14px] font-bold text-basil">{MODE_LABEL[c.mode as keyof typeof MODE_LABEL]}{rank ? <span className="num ml-1.5 font-semibold text-ink-3">{rank}位</span> : null}</p>
         <IconButton label={fav ? 'お気に入りから外す' : 'お気に入りに追加'} aria-pressed={fav} onClick={onFav} className="-mr-2 h-10 w-10">
           <Heart size={19} className={fav ? 'fill-raw text-raw' : ''} />
         </IconButton>

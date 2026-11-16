@@ -106,3 +106,22 @@ describe('健康目標', () => {
     console.log(c.map((x) => `${x.mode} ¥${x.price} P${Math.round(x.nutrients.protein)} ${x.productIds.join(',')} ${x.reasons.join(' / ')}`).join('\n'))
   })
 })
+
+describe('昼食候補を観点ごとに複数件', () => {
+  it('各観点で複数件・重複なし・予算内・同じ主食は観点内で2回まで', async () => {
+    const { suggestLunch } = await import('./lunch')
+    const { SEVEN_PRODUCTS } = await import('../data/seven')
+    const list = suggestLunch(SEVEN_PRODUCTS, 600, 2400, [], 8)
+    for (const m of ['balance', 'protein', 'budget']) {
+      const xs = list.filter((c) => c.mode === m)
+      expect(xs.length).toBeGreaterThanOrEqual(5)
+      const staples = new Map<string, number>()
+      for (const c of xs) staples.set(c.productIds[0], (staples.get(c.productIds[0]) ?? 0) + 1)
+      expect(Math.max(...staples.values())).toBeLessThanOrEqual(2)
+    }
+    const keys = list.map((c) => [...c.productIds].sort().join())
+    expect(new Set(keys).size).toBe(keys.length)
+    expect(list.every((c) => c.price <= 600)).toBe(true)
+    expect(suggestLunch(SEVEN_PRODUCTS, 600, 2400)).toHaveLength(3)
+  })
+})
