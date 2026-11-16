@@ -29,7 +29,7 @@ export default function RecipeDetail() {
 
   const n = recipeNutrition(recipe)
   const t = recipeTimes(recipe)
-  const sourceLabel = recipe.source === 'ai-detailed' ? 'AI提案（詳細レシピ）' : recipe.source === 'ai-template' ? 'AI生成（ルールベース）' : '手動登録'
+  const sourceLabel = recipe.source === 'ai-detailed' ? 'AI提案（詳細レシピ）' : recipe.source === 'ai-template' ? 'AI生成（ルールベース）' : recipe.source === 'ai-llm' ? 'AI生成（Workers AI）' : '手動登録'
   return (
     <Page
       title={recipe.name}

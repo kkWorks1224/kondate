@@ -1,4 +1,4 @@
-import { Database, Download, RotateCcw, Wrench } from 'lucide-react'
+import { Download, LogOut, RefreshCw, RotateCcw, UserX, Wrench } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Page } from '../components/layout/Page'
@@ -8,7 +8,8 @@ import { Sheet } from '../components/ui/Sheet'
 import { toast } from '../components/ui/Toast'
 import { cx } from '../lib/format'
 import { ai } from '../services/ai'
-import { STORAGE_KEY } from '../services/storage'
+import { deleteAccount, logout, pull, useCloud } from '../services/cloud'
+import { SyncBadge } from '../features/auth/SyncBadge'
 import { useStore } from '../store/useStore'
 import type { Tool, WashPolicy } from '../types'
 
@@ -22,6 +23,9 @@ export default function Settings() {
   const session = useStore((s) => s.session)
   const reset = useStore((s) => s.reset)
   const [confirm, setConfirm] = useState(false)
+  const [delAcc, setDelAcc] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const user = useCloud((s) => s.user)
   const nav = useNavigate()
 
   // 調理中に器具を使っている工程（タイマー進行中の工程）
@@ -32,7 +36,7 @@ export default function Settings() {
   const groups = ['加熱', '家電', '下ごしらえ', '保存'] as const
 
   const exportData = () => {
-    const raw = localStorage.getItem(STORAGE_KEY) ?? '{}'
+    const raw = JSON.stringify(useStore.persist.getOptions().partialize!(useStore.getState()), null, 2)
     const url = URL.createObjectURL(new Blob([raw], { type: 'application/json' }))
     const a = document.createElement('a')
     a.href = url
@@ -75,9 +79,20 @@ export default function Settings() {
               </Field>
             </div>
           </Group>
+          <Group title="アカウント" footer="データは Cloudflare D1 に保存され、同じ Google アカウントでログインした端末と同期されます。オフライン中の変更は端末に保存し、つながったときに送信します。">
+            {user && (
+              <Row>
+                {user.picture ? <img src={user.picture} alt="" referrerPolicy="no-referrer" className="h-10 w-10 rounded-full" /> : <span className="flex h-10 w-10 items-center justify-center rounded-full bg-basil text-white">{(user.name || user.email).charAt(0)}</span>}
+                <span className="min-w-0 flex-1"><span className="block text-[15px] font-semibold">{user.name}</span><span className="block truncate text-[13px] text-ink-3">{user.email}</span></span>
+              </Row>
+            )}
+            <Row><SyncBadge className="flex-1 text-[14px]" /></Row>
+            <Row onClick={() => void pull().then(() => toast('最新の状態を確認しました')).catch(() => toast('同期できませんでした', 'error'))}><RefreshCw size={18} className="text-basil" aria-hidden /><span className="flex-1 text-[15px] font-medium text-basil">今すぐ同期</span></Row>
+            <Row onClick={async () => { setBusy(true); await logout() }}><LogOut size={18} className="text-ink-2" aria-hidden /><span className="flex-1 text-[15px] font-medium">{busy ? 'ログアウト中…' : 'ログアウト'}</span></Row>
+            <Row onClick={() => setDelAcc(true)}><UserX size={18} className="text-raw" aria-hidden /><span className="flex-1 text-[15px] font-medium text-raw">アカウントとデータを削除</span></Row>
+          </Group>
           <Group title="データ">
-            <Row><Database size={18} className="text-ink-3" aria-hidden /><span className="flex-1 text-[14px] text-ink-2">保存先：このブラウザ（localStorage）。再読み込みしても保持されます。</span></Row>
-            <Row><span className="flex-1 text-[14px] text-ink-2">AI：{ai.label}</span></Row>
+            <Row><span className="flex-1 text-[14px] text-ink-2">AI：{ai.label}（通信できないときはルールベース）</span></Row>
             <Row onClick={exportData}><Download size={18} className="text-basil" aria-hidden /><span className="flex-1 text-[15px] font-medium text-basil">データを書き出す（JSON）</span></Row>
             <Row onClick={() => setConfirm(true)}><RotateCcw size={18} className="text-raw" aria-hidden /><span className="flex-1 text-[15px] font-medium text-raw">初期状態に戻す</span></Row>
           </Group>
@@ -93,6 +108,9 @@ export default function Settings() {
           </Group>
         </div>
       </div>
+      <Sheet open={delAcc} onClose={() => setDelAcc(false)} title="アカウントを削除しますか？" footer={<div className="flex gap-2"><Button variant="secondary" className="flex-1" onClick={() => setDelAcc(false)}>やめる</Button><Button variant="danger" className="flex-1" disabled={busy} onClick={async () => { setBusy(true); try { await deleteAccount() } catch { setBusy(false); toast('削除できませんでした', 'error') } }}>完全に削除する</Button></div>}>
+        <p className="text-[15px] leading-relaxed text-ink-2">サーバに保存した献立・レシピ・在庫・記録とアカウント情報をすべて削除します。元に戻せません。</p>
+      </Sheet>
       <Sheet open={confirm} onClose={() => setConfirm(false)} title="初期状態に戻しますか？" footer={<div className="flex gap-2"><Button variant="secondary" className="flex-1" onClick={() => setConfirm(false)}>やめる</Button><Button variant="danger" className="flex-1" onClick={() => { reset(); setConfirm(false); toast('初期状態に戻しました'); nav('/') }}>初期化する</Button></div>}>
         <p className="text-[15px] leading-relaxed text-ink-2">献立・レシピの編集・在庫・買い物・調理の進捗・食事と体重の記録をすべて消し、サンプルデータの状態に戻します。元に戻せません。必要なら先にデータを書き出してください。</p>
       </Sheet>

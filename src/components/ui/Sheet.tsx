@@ -13,7 +13,7 @@ export function Sheet({ open, onClose, title, children, footer, wide }: { open: 
     const prev = document.activeElement as HTMLElement | null
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKey)
-    const t = setTimeout(() => panel.current?.querySelector<HTMLElement>('[data-autofocus], input, select, textarea, button')?.focus(), 60)
+    const t = setTimeout(() => { const p = panel.current; (p?.querySelector<HTMLElement>('[data-autofocus]') ?? p?.querySelector<HTMLElement>('input, select, textarea, button'))?.focus() }, 60)
     document.body.style.overflow = 'hidden'
     return () => {
       window.removeEventListener('keydown', onKey)

@@ -5,10 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#F4F5F2" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232E6A4F'/><path d='M9 13h14v2a7 7 0 0 1-14 0z' fill='white'/><rect x='8' y='11' width='16' height='2' rx='1' fill='white'/></svg>" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="献立" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <style>
+      /* JS 読み込み前から出す全画面スケルトン */
+      #boot { position: fixed; inset: 0; z-index: 100; background: #f4f5f2; padding: calc(env(safe-area-inset-top) + 20px) 16px 0; }
+      #boot .w { max-width: 960px; margin: 0 auto; }
+      #boot .b { position: relative; overflow: hidden; background: #e9ebe6; border-radius: 10px; margin-bottom: 12px; }
+      #boot .b::after { content: ""; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(255,255,255,.7), transparent); animation: bk 1.2s linear infinite; }
+      #boot .tab { position: fixed; left: 0; right: 0; bottom: 0; height: calc(64px + env(safe-area-inset-bottom)); background: rgba(250,251,249,.85); border-top: 1px solid rgba(28,28,30,.09); }
+      @keyframes bk { to { transform: translateX(100%); } }
+      @media (prefers-reduced-motion: reduce) { #boot .b::after { animation: none; } }
+      @media (min-width: 1024px) { #boot { padding-left: 288px; padding-top: 40px; } #boot .tab { display: none; } }
+    </style>
     <title>今週の献立</title>
   </head>
   <body>
+    <div id="boot" aria-busy="true" aria-label="読み込み中">
+      <div class="w">
+        <div class="b" style="width: 176px; height: 36px"></div>
+        <div class="b" style="width: 240px; height: 16px; margin-bottom: 24px"></div>
+        <div class="b" style="height: 176px; border-radius: 18px"></div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px"><div class="b" style="height: 112px; border-radius: 18px"></div><div class="b" style="height: 112px; border-radius: 18px"></div></div>
+        <div class="b" style="height: 96px; border-radius: 18px"></div>
+      </div>
+      <div class="tab"></div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -7,6 +7,7 @@ import { AppShell } from './components/layout/AppShell'
 import { PageSkeleton } from './components/layout/PageSkeleton'
 import Home from './pages/Home'
 import { RouteError } from './components/layout/RouteError'
+import { AuthGate } from './features/auth/AuthGate'
 
 const Plan = lazy(() => import('./pages/Plan'))
 const Recipes = lazy(() => import('./pages/Recipes'))
@@ -48,7 +49,13 @@ const router = createBrowserRouter([
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <MotionConfig reducedMotion="user">
-      <RouterProvider router={router} />
+      <AuthGate>
+        <RouterProvider router={router} />
+      </AuthGate>
     </MotionConfig>
   </StrictMode>,
 )
+
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}))
+}

@@ -471,6 +471,8 @@ export const useStore = create<Store>()(
     {
       name: STORAGE_KEY,
       version: 1,
+      // ログインしてユーザーが決まってから読み込む（services/cloud）
+      skipHydration: true,
       storage: createJSONStorage(() => localStorageAdapter),
       partialize: (s) => {
         const { schema, profile, recipes, tools, inventory, prepared, plan, shopping, expenses, session, cookHistory, meals, health, lunchFavorites, aiGeneration } = s

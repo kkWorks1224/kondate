@@ -25,6 +25,15 @@ export type Method =
   | 'potato-salad'
   | 'mapo'
 
+export const METHODS: { id: Method; label: string }[] = [
+  { id: 'stirfry', label: '炒め物' }, { id: 'roux', label: 'カレー・シチュー（ルウで煮込む）' }, { id: 'nimono', label: '煮物' },
+  { id: 'soup', label: '汁物・スープ' }, { id: 'grill-fish', label: '魚焼きグリルで焼く' }, { id: 'foil', label: 'ホイル焼き' },
+  { id: 'ohitashi', label: 'おひたし・和え物' }, { id: 'hijiki', label: 'ひじき煮などの常備菜' }, { id: 'pasta', label: 'パスタ' },
+  { id: 'donburi', label: '丼もの' }, { id: 'gyoza', label: '餃子' }, { id: 'hamburg', label: 'ハンバーグ' },
+  { id: 'karaage', label: '揚げ物・唐揚げ' }, { id: 'nabe', label: '鍋' }, { id: 'fried-rice', label: '炒飯' },
+  { id: 'omurice', label: 'オムライス' }, { id: 'potato-salad', label: 'ポテトサラダ' }, { id: 'mapo', label: '麻婆' },
+]
+
 export interface RecipeDef {
   id: string
   name: string
@@ -50,7 +59,7 @@ export interface RecipeDef {
 export const RECIPE_COLORS = ['#1F8A5B', '#3D7CC9', '#B97A0E', '#A6466B', '#3F8C8A', '#8A5A44', '#5B7F2B', '#C05B2C', '#2F5F8A']
 
 // 100gあたりの切る時間（分）の目安
-const CUT_RATE: Record<string, number> = {
+export const CUT_RATE: Record<string, number> = {
   薄切り: 1.0, くし切り: 0.8, みじん切り: 2.2, 千切り: 2.0, 一口大: 0.9, 乱切り: 0.9, ざく切り: 0.6, 斜め切り: 0.8,
   小口切り: 1.0, 角切り: 1.2, 小房: 1.4, ささがき: 3.0, 細切り: 2.0, 短冊切り: 1.5, いちょう切り: 1.2, 半月切り: 1.0,
   そぎ切り: 1.2, '4cm幅': 0.6, '3cm長さ': 0.6, 筋切り: 0.8, 'はさみで切る': 0.6, 石づきを取ってほぐす: 0.5, 'さいの目': 1.0,

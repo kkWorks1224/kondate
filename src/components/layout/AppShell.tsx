@@ -4,6 +4,7 @@ import { NavLink, useLocation, useOutlet } from 'react-router-dom'
 import { cx } from '../../lib/format'
 import { useStore } from '../../store/useStore'
 import { Toaster } from '../ui/Toast'
+import { SyncBadge } from '../../features/auth/SyncBadge'
 
 const NAV = [
   { to: '/', label: 'ホーム', icon: Home, tab: true },
@@ -43,7 +44,7 @@ export function AppShell() {
             </NavLink>
           ))}
         </nav>
-        <p className="mt-auto px-3 text-[12px] leading-relaxed text-ink-3">データはこの端末のブラウザに保存されます。</p>
+        <SyncBadge />
       </aside>
 
       <main id="main" className="min-w-0 flex-1 pb-[calc(76px+env(safe-area-inset-bottom))] lg:pb-10">

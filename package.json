@@ -4,13 +4,16 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host",
-    "build": "tsc -b && vite build",
-    "typecheck": "tsc -b --noEmit",
+    "dev": "vite --port 5188 --strictPort",
+    "build": "tsc -b && tsc -p tsconfig.worker.json && vite build",
+    "typecheck": "tsc -b --noEmit && tsc -p tsconfig.worker.json",
     "test": "vitest run",
-    "preview": "vite preview"
+    "db:migrate:local": "wrangler d1 migrations apply kondate --local",
+    "db:migrate": "wrangler d1 migrations apply kondate --remote",
+    "deploy": "npm run build && wrangler d1 migrations apply kondate --remote && wrangler deploy"
   },
   "dependencies": {
+    "hono": "^4.13.18",
     "lucide-react": "^1.73.0",
     "motion": "^14.14.0",
     "react": "^19.3.1",
@@ -20,6 +23,8 @@
     "zustand": "^5.1.0"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.69.1",
+    "@cloudflare/workers-types": "^5.20261115.1",
     "@tailwindcss/vite": "^4.3.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
@@ -27,6 +32,7 @@
     "tailwindcss": "^4.3.5",
     "typescript": "~5.9.3",
     "vite": "^8.3.8",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.0",
+    "wrangler": "^4.162.0"
   }
 }

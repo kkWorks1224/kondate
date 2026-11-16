@@ -1,5 +1,6 @@
 import { motion, useMotionValue, useTransform, type PanInfo } from 'motion/react'
-import { Check, ClipboardList, Plus, Refrigerator, ShoppingCart, Snowflake, Trash2, Utensils, Warehouse } from 'lucide-react'
+import { Check, ClipboardList, Plus, Refrigerator, ShoppingCart, Snowflake, Trash2, Undo2, Utensils, Warehouse } from 'lucide-react'
+import { Flick } from '../components/ui/Flick'
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Page } from '../components/layout/Page'
@@ -192,7 +193,10 @@ function Shopping() {
             <h2 className="mb-2 px-1 text-[15px] font-bold text-ink-2">{a}</h2>
             <ul className="surface divide-y divide-line overflow-hidden">
               {shopping.filter((i) => i.aisle === a).map((i) => (
-                <li key={i.id} className={cx('flex items-center gap-3 py-2.5 pr-3 pl-2', i.purchased && 'bg-[#fafbf9]')}>
+                <Flick key={i.id}
+                  right={{ label: i.purchased ? '未購入に戻す' : '購入済み', icon: i.purchased ? <Undo2 size={20} /> : <Check size={20} strokeWidth={3} />, color: i.purchased ? '#9a5b00' : '#2e6a4f', run: () => toggle(i.id, !i.purchased) }}
+                  left={i.manual && !i.purchased ? { label: '削除', icon: <Trash2 size={20} />, color: '#b42318', run: () => removeItem(i.id) } : undefined}>
+                <div className={cx('flex items-center gap-3 py-2.5 pr-3 pl-2', i.purchased && 'bg-[#fafbf9]')}>
                   <button onClick={() => toggle(i.id, !i.purchased)} aria-pressed={i.purchased} aria-label={i.purchased ? `${i.name}を未購入に戻す` : `${i.name}を購入済みにする`} className={cx('press flex h-11 w-11 shrink-0 items-center justify-center rounded-full cursor-pointer')}>
                     <span className={cx('flex h-7 w-7 items-center justify-center rounded-full ring-[1.5px] transition-colors', i.purchased ? 'bg-basil text-white ring-basil' : 'text-transparent ring-line-strong')}><Check size={16} strokeWidth={3} /></span>
                   </button>
@@ -209,7 +213,8 @@ function Shopping() {
                     <input inputMode="numeric" className="num h-10 w-full rounded-[10px] bg-sunken pr-2 pl-5 text-right text-[15px] outline-none focus:bg-surface focus:ring-2 focus:ring-basil/40" placeholder={String(i.estPrice)} value={i.actualPrice ?? ''} onChange={(e) => { const v = e.target.value.replace(/[^\d]/g, ''); setPrice(i.id, v ? Number(v) : undefined) }} />
                   </label>
                   {i.manual && !i.purchased && <IconButton label={`${i.name}を削除`} onClick={() => removeItem(i.id)}><Trash2 size={16} /></IconButton>}
-                </li>
+                </div>
+                </Flick>
               ))}
             </ul>
           </section>
@@ -218,7 +223,7 @@ function Shopping() {
           <input className={cx(inputCls, 'bg-surface shadow-card')} placeholder="献立以外のものを追加（例：ティッシュ）" value={name} onChange={(e) => setName(e.target.value)} aria-label="買い物リストに追加" />
           <Button type="submit" variant="tinted" icon={<Plus size={16} />}>追加</Button>
         </form>
-        <p className="mb-6 px-1 text-[12px] leading-relaxed text-ink-3">価格は想定の目安です。レシートの金額を入力すると支出が更新されます。購入済みにすると在庫に追加され、取り消すと在庫・支出から差し戻します（二重計上はしません）。</p>
+        <p className="mb-6 px-1 text-[12px] leading-relaxed text-ink-3">行を右にフリックすると購入済み（もう一度で未購入に戻す）、手動で追加したものは左にフリックで削除できます。価格は想定の目安です。レシートの金額を入力すると支出が更新されます。購入済みにすると在庫に追加され、取り消すと在庫・支出から差し戻します（二重計上はしません）。</p>
       </div>
 
       <aside className="order-1 mb-5 lg:order-2">
@@ -247,6 +252,13 @@ function Prepared() {
   const recipes = useStore((s) => s.recipes)
   const eat = useStore((s) => s.eatPrepared)
   const deleteMeal = useStore((s) => s.deleteMeal)
+  const eatNow = (id: string) => {
+    const res = eat(id, 'dinner')
+    if (res.ok) {
+      const m = useStore.getState().meals.at(-1)
+      toast(res.message ?? '', 'ok', m ? { label: '取り消す', run: () => deleteMeal(m.id) } : undefined)
+    } else toast(res.message, 'error')
+  }
   const discard = useStore((s) => s.discardPrepared)
   const [showEmpty, setShowEmpty] = useState(false)
   const t = today()
@@ -265,7 +277,10 @@ function Prepared() {
           const r = recipes[p.recipeId]
           const over = diffDays(p.consumeBy, t) < 0
           return (
-            <li key={p.id} className="surface flex items-center gap-3 p-4">
+            <Flick key={p.id} className="surface"
+              right={p.servings > 0 && !over ? { label: '食べた', icon: <Utensils size={20} />, color: '#2e6a4f', run: () => eatNow(p.id) } : undefined}
+              left={over || p.servings === 0 ? { label: '削除', icon: <Trash2 size={20} />, color: '#b42318', run: () => { discard(p.id); toast(over ? '期限切れの作り置きを廃棄として削除しました' : '削除しました', 'info') } } : undefined}>
+            <div className="flex items-center gap-3 p-4">
               <span className="h-10 w-1.5 shrink-0 rounded-full" style={{ background: r?.color }} aria-hidden />
               <div className="min-w-0 flex-1">
                 <p className="flex flex-wrap items-center gap-2 text-[16px] font-semibold">{r?.name ?? '削除されたレシピ'}<span className="num text-[14px] font-normal text-ink-2">{p.servings}食</span></p>
@@ -275,13 +290,14 @@ function Prepared() {
                 </p>
                 <div className="mt-1.5"><ExpTag date={p.consumeBy} /></div>
               </div>
-              {p.servings > 0 && !over && <Button size="sm" variant="tinted" onClick={() => { const res = eat(p.id, 'dinner'); if (res.ok) { const m = useStore.getState().meals.at(-1); toast(res.message ?? '', 'ok', m ? { label: '取り消す', run: () => deleteMeal(m.id) } : undefined) } else toast(res.message, 'error') }}>食べた</Button>}
+              {p.servings > 0 && !over && <Button size="sm" variant="tinted" onClick={() => eatNow(p.id)}>食べた</Button>}
               {(over || p.servings === 0) && <IconButton label="一覧から削除" onClick={() => { discard(p.id); toast(over ? '期限切れの作り置きを廃棄として削除しました' : '削除しました', 'info') }}><Trash2 size={17} /></IconButton>}
-            </li>
+            </div>
+            </Flick>
           )
         })}
       </ul>
-      <p className="mt-3 px-1 text-[12px] leading-relaxed text-ink-3">「食べた」は夕食として記録し、栄養記録に反映します。期限を過ぎたものは食べずに廃棄してください。</p>
+      <p className="mt-3 px-1 text-[12px] leading-relaxed text-ink-3">「食べた」（または右にフリック）は夕食として記録し、栄養記録に反映します。期限を過ぎたものは食べずに廃棄してください。</p>
     </>
   )
 }

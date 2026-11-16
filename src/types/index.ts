@@ -119,7 +119,7 @@ export interface Recipe {
   liked: boolean // 好きな料理
   isNew: boolean // AIが新しく提案した料理（未経験）
   starred: boolean // ユーザーのお気に入り
-  source: 'ai-detailed' | 'ai-template' | 'user'
+  source: 'ai-detailed' | 'ai-template' | 'ai-llm' | 'user'
   needsReview?: boolean // 自動生成で要確認
   ingredients: RecipeIngredient[]
   steps: RecipeStep[]
@@ -173,7 +173,7 @@ export interface WeekPlan {
   weekStart: ISODate // 作り置き日（日曜）
   days: DayPlan[]
   status: 'draft' | 'confirmed'
-  generatedBy: 'ai-local' | 'manual'
+  generatedBy: 'ai-local' | 'ai-workers' | 'manual'
   rationale: string[]
   generation: number
   createdAt: string

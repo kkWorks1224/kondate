@@ -120,11 +120,11 @@ function GenerateSheet({ open, onClose }: { open: boolean; onClose: () => void }
   return (
     <Sheet open={open} onClose={onClose} title="AIでレシピを作る" footer={<Button className="w-full" onClick={submit} disabled={!name.trim() || busy} icon={<Sparkles size={16} />}>{busy ? '作成中…' : 'レシピを作成'}</Button>}>
       <form onSubmit={(e) => { e.preventDefault(); submit() }}>
-        <Field label="料理名" hint="ライブラリにある料理は詳細なテンプレートから、ない料理は名前から推定した下書き（要確認）を作ります。">
+        <Field label="料理名" hint="音声入力の誤変換もAIが補正します。">
           <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="例：鶏むね肉とブロッコリーの炒め" data-autofocus />
         </Field>
       </form>
-      <div className="mt-4 rounded-xl bg-sunken px-3 py-2.5 text-[13px] leading-relaxed text-ink-2">現在はローカルのルールベース生成です。LLMは接続していません。作成後に材料・工程・器具を編集できます。</div>
+      <div className="mt-4 rounded-xl bg-sunken px-3 py-2.5 text-[13px] leading-relaxed text-ink-2">Workers AI が材料・分量・切り方・調理法を決め、工程・器具・衛生上の順序はアプリが組み立てます。ライブラリにある料理は詳細レシピを使います。作成後に編集できます。</div>
     </Sheet>
   )
 }
