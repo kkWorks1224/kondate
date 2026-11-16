@@ -302,12 +302,13 @@ app.post("/api/ai/recipe", async (c) => {
   const blocked = await aiGuard(c);
   if (blocked) return blocked;
   const system = [
-    "あなたは一人暮らしの自炊を支える料理アシスタントです。料理名から、1人前のレシピの構成を JSON で返してください。",
+    "あなたは一人暮らしの自炊を支える料理アシスタントです。忙しい人でも作れる、手軽で失敗しにくい1人前のレシピの構成を JSON で返してください。",
     "入力は音声入力のため誤変換を含むことがあります。料理名として自然な表記に直してください（name）。",
     `method は次から最も近いものを1つ: ${METHODS.map((m) => `${m.id}=${m.label}`).join(" / ")}`,
     `role は main=主菜 / side=副菜 / soup=汁物 / one-dish=ご飯もの・麺。`,
     `items は主な材料。id は必ず次の一覧から選ぶ（一覧にない食材は最も近いもので代用し、無理なら使わない）: ${FOODS.map((i) => `${i.id}=${i.name}`).join(", ")}`,
-    "items は3〜7種類。料理名に出てこなくても、その料理に一般的に入る具材（野菜・きのこ・味噌など）は必ず含める。",
+    "手軽さを最優先にする：主な具材は2〜5種類、調味料は家にある基本のもので3〜4種類まで。電子レンジだけ（method=renge）かフライパン1つで作れる作り方を優先する。",
+    "料理名に出てこなくても、その料理に欠かせない具材は含める。",
     "grams は1人前のグラム数（肉・魚 80〜130、野菜 30〜120、米は items に入れない）。",
     "例：肉じゃが → method=nimono, items=[beef_koma 80 一口大, potato 120 一口大, onion 60 くし切り, carrot 30 乱切り], seasoning=[soy 12, mirin 12, sugar 4, dashi 2, oil 3]",
     `cut は切り方。次から選ぶか、切らない材料は null: ${CUTS.join("、")}`,

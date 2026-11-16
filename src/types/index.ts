@@ -131,6 +131,19 @@ export interface Recipe {
   tags: string[]
   color: string // 調理タイムラインでの識別色
   updatedAt: string
+  /** 調理法（buildRecipe のテンプレート名） */
+  method?: string
+  /** 手軽な作り方（3〜5行・大さじ表記）。無ければ材料と調理法から自動で作る */
+  easy?: EasyGuide
+}
+
+export interface EasyGuide {
+  steps: string[]
+  minutes?: number
+  /** 「レンジだけ」「フライパン1つ」など */
+  style?: string[]
+  /** コツ・アレンジ */
+  point?: string
 }
 
 /* ---------- 在庫・作り置き ---------- */

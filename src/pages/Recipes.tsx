@@ -1,4 +1,5 @@
-import { Search, Snowflake, Sparkles, Star, Timer } from 'lucide-react'
+import { Microwave, Search, Snowflake, Sparkles, Star, Timer, Zap } from 'lucide-react'
+import { easyGuide } from '../services/ai/easy'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Page } from '../components/layout/Page'
@@ -8,7 +9,7 @@ import { Segmented } from '../components/ui/Segmented'
 import { Sheet } from '../components/ui/Sheet'
 import { toast } from '../components/ui/Toast'
 import { INGREDIENT_MAP } from '../data/ingredients'
-import { recipeCost, recipeNutrition, recipeTimes } from '../engine/nutrition'
+import { recipeCost, recipeNutrition } from '../engine/nutrition'
 import { cx, yen } from '../lib/format'
 import { useStore } from '../store/useStore'
 import type { Recipe, Role } from '../types'
@@ -23,14 +24,20 @@ export default function Recipes() {
   const [f, setF] = useState<F>('all')
   const [freezeOnly, setFreezeOnly] = useState(false)
   const [quick, setQuick] = useState(false)
+  const [easy, setEasy] = useState(false)
+  const [renge, setRenge] = useState(false)
   const [gen, setGen] = useState(false)
   const all = Object.values(recipes)
   const list = all
     .filter((r) => (f === 'all' ? true : f === 'canMake' ? r.canMake : f === 'liked' ? r.liked : f === 'new' ? r.isNew : r.starred))
     .filter((r) => !freezeOnly || r.freeze === 'good')
-    .filter((r) => !quick || recipeTimes(r).total <= 20)
+    .filter((r) => !quick || easyGuide(r).minutes <= 15)
+    .filter((r) => !easy || r.tags.includes('かんたん') || r.ingredients.filter((i) => !INGREDIENT_MAP[i.ingredientId]?.staple).length <= 3)
+    .filter((r) => !renge || easyGuide(r).style.includes('レンジだけ'))
     .filter((r) => !q || r.name.includes(q) || r.ingredients.some((i) => INGREDIENT_MAP[i.ingredientId]?.name.includes(q)))
-  const groups = (['main', 'one-dish', 'side', 'soup'] as Role[]).map((role) => ({ role, items: list.filter((r) => r.role === role) })).filter((g) => g.items.length)
+  // 「かんたん」タグのレシピを各分類の先頭に
+  const easyFirst = (a: Recipe, b: Recipe) => Number(b.tags.includes('かんたん')) - Number(a.tags.includes('かんたん'))
+  const groups = (['main', 'one-dish', 'side', 'soup'] as Role[]).map((role) => ({ role, items: list.filter((r) => r.role === role).sort(easy ? easyFirst : () => 0) })).filter((g) => g.items.length)
 
   return (
     <Page title="レシピ図鑑" subtitle={`${all.length}品・作れる料理 ${all.filter((r) => r.canMake).length}品`} back="/plan" actions={<Button size="sm" variant="tinted" icon={<Sparkles size={15} />} onClick={() => setGen(true)}>AIで作る</Button>}>
@@ -42,9 +49,11 @@ export default function Recipes() {
         <Segmented label="分類" value={f} onChange={setF} options={[
           { value: 'all', label: 'すべて' }, { value: 'canMake', label: '作れる' }, { value: 'liked', label: '好き' }, { value: 'new', label: '新提案' }, { value: 'starred', label: '★' },
         ]} />
-        <div className="flex gap-2">
+        <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+          <Chip on={easy} onClick={() => setEasy(!easy)}><Zap size={14} />かんたん</Chip>
+          <Chip on={renge} onClick={() => setRenge(!renge)}><Microwave size={14} />レンジだけ</Chip>
+          <Chip on={quick} onClick={() => setQuick(!quick)}><Timer size={14} />15分以内</Chip>
           <Chip on={freezeOnly} onClick={() => setFreezeOnly(!freezeOnly)}><Snowflake size={14} />冷凍向き</Chip>
-          <Chip on={quick} onClick={() => setQuick(!quick)}><Timer size={14} />20分以内</Chip>
         </div>
       </div>
 
@@ -66,7 +75,7 @@ export default function Recipes() {
 
 function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button aria-pressed={on} onClick={onClick} className={cx('press inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold cursor-pointer', on ? 'bg-ink text-white' : 'bg-surface text-ink-2 shadow-card')}>
+    <button aria-pressed={on} onClick={onClick} className={cx('press inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold cursor-pointer', on ? 'bg-ink text-white' : 'bg-surface text-ink-2 shadow-card')}>
       {children}
     </button>
   )
@@ -74,7 +83,7 @@ function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; chi
 
 function RecipeRow({ r, onStar }: { r: Recipe; onStar: () => void }) {
   const n = useMemo(() => recipeNutrition(r), [r])
-  const t = recipeTimes(r)
+  const ez = useMemo(() => easyGuide(r), [r])
   const main = r.ingredients.filter((i) => !INGREDIENT_MAP[i.ingredientId]?.staple).slice(0, 4).map((i) => INGREDIENT_MAP[i.ingredientId]?.name)
   return (
     <li className="flex items-center">
@@ -86,10 +95,11 @@ function RecipeRow({ r, onStar }: { r: Recipe; onStar: () => void }) {
             {r.canMake ? null : r.isNew ? <Tag tone="sky">新提案</Tag> : null}
             {r.liked && !r.canMake && <Tag>好き</Tag>}
             {r.needsReview && <Tag tone="amber">要確認</Tag>}
+            {r.tags.includes('かんたん') && <Tag tone="basil">かんたん</Tag>}
           </span>
           <span className="block truncate text-[13px] text-ink-3">{main.join('・')}</span>
           <span className="num mt-0.5 flex flex-wrap gap-x-3 text-[12px] text-ink-2">
-            <span>{t.total}分</span><span>{yen(recipeCost(r))}</span><span>{Math.round(n.kcal)}kcal</span><span>P{Math.round(n.protein)}g</span>
+            <span>約{ez.minutes}分</span>{ez.style.filter((x) => !/分$/.test(x)).slice(0, 2).map((x) => <span key={x} className="text-basil">{x}</span>)}<span>{yen(recipeCost(r))}</span><span>{Math.round(n.kcal)}kcal</span><span>P{Math.round(n.protein)}g</span>
             <span>{r.freeze === 'good' ? '冷凍◎' : r.freeze === 'ok' ? '冷凍○' : '冷凍×'}</span>
           </span>
         </span>

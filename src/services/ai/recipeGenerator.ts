@@ -24,6 +24,7 @@ export type Method =
   | 'omurice'
   | 'potato-salad'
   | 'mapo'
+  | 'renge'
 
 export const METHODS: { id: Method; label: string }[] = [
   { id: 'stirfry', label: '炒め物' }, { id: 'roux', label: 'カレー・シチュー（ルウで煮込む）' }, { id: 'nimono', label: '煮物' },
@@ -32,6 +33,7 @@ export const METHODS: { id: Method; label: string }[] = [
   { id: 'donburi', label: '丼もの' }, { id: 'gyoza', label: '餃子' }, { id: 'hamburg', label: 'ハンバーグ' },
   { id: 'karaage', label: '揚げ物・唐揚げ' }, { id: 'nabe', label: '鍋' }, { id: 'fried-rice', label: '炒飯' },
   { id: 'omurice', label: 'オムライス' }, { id: 'potato-salad', label: 'ポテトサラダ' }, { id: 'mapo', label: '麻婆' },
+  { id: 'renge', label: '電子レンジだけで作る（蒸し・煮もの）' },
 ]
 
 export interface RecipeDef {
@@ -54,6 +56,7 @@ export interface RecipeDef {
   pan?: 'pan_large' | 'pan_small'
   rice?: number // 1食あたりの米（g）
   egg?: boolean
+  easy?: import('../../types').EasyGuide
 }
 
 export const RECIPE_COLORS = ['#1F8A5B', '#3D7CC9', '#B97A0E', '#A6466B', '#3F8C8A', '#8A5A44', '#5B7F2B', '#C05B2C', '#2F5F8A']
@@ -267,6 +270,13 @@ export function buildRecipe(def: RecipeDef, index = 0): Recipe {
       last = push({ kind: 'heat', title: '水溶き片栗粉でとろみをつける', durationMin: 1, scaling: 'fixed', attended: true, tools: ['stove', 'pan_large'], dependsOn: [s1], heat: { method: '1分以上しっかり沸騰させる' } })
       break
     }
+    case 'renge': {
+      // 耐熱容器に入れてレンジで加熱するだけ。肉・魚は中心まで火が通ったかを確認する
+      const r1 = push({ kind: meat ? 'raw' : 'plate', title: '耐熱容器に具材と調味料を入れて混ぜる', durationMin: 2, scaling: 'sublinear', attended: true, tools: ['muji_range|bowl'], dependsOn: all(...rawIds, ...cuts, measureId), target: meat ? { ingredientId: meat.ingredientId } : undefined, safety: meat ? '生肉・生魚に触れた後は手を洗う' : undefined })
+      const m1 = push({ kind: 'simmer', title: 'ふんわりラップをしてレンジで加熱する', durationMin: meat ? 5 : 3, scaling: 'sublinear', attended: false, tools: ['microwave', 'muji_range|bowl'], dependsOn: [r1], heat: { method: meat ? '600Wで5分前後。赤い部分が残れば30秒ずつ追加' : '600Wで3分', coreTempC: meat ? 75 : undefined, holdMin: meat ? 1 : undefined }, safety: meatSafety })
+      last = push({ kind: 'rest', title: 'ラップをしたまま2分おいて全体を混ぜる', durationMin: 2, scaling: 'fixed', attended: false, tools: [], dependsOn: [m1] })
+      break
+    }
   }
 
   void prep
@@ -290,6 +300,8 @@ export function buildRecipe(def: RecipeDef, index = 0): Recipe {
     tags: def.tags ?? [],
     color: RECIPE_COLORS[index % RECIPE_COLORS.length],
     updatedAt: new Date('2026-11-14T09:00:00+09:00').toISOString(),
+    method: def.method,
+    ...(def.easy ? { easy: def.easy } : {}),
   }
 }
 

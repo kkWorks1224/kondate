@@ -4,6 +4,7 @@ import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { INGREDIENT_MAP } from '../data/ingredients'
 import { buildSeed, BREAKFAST_PRESETS, presetNutrition } from '../data/seed'
+import { buildSeedRecipes } from '../data/recipes'
 import { SEVEN_MAP } from '../data/seven'
 import { planCooking } from '../engine/cookPlanner'
 import { comboNutrients } from '../engine/lunch'
@@ -84,6 +85,7 @@ interface Actions {
   recordBreakfast: (presetId: string | 'skip', date: string) => Result
   deleteMeal: (id: string) => void
   restoreMeal: (meal: AppData['meals'][number], expense?: Expense) => void
+  ensureLibrary: () => number
   saveProduct: (p: SevenProduct) => void
   deleteProduct: (id: string) => void
   toggleLunchFavorite: (productIds: string[]) => void
@@ -461,6 +463,33 @@ export const useStore = create<Store>()(
           return s.lunchFavorites.some((f) => f.key === key) ? { lunchFavorites: s.lunchFavorites.filter((f) => f.key !== key) } : { lunchFavorites: [...s.lunchFavorites, { key, productIds }] }
         }),
       discardPrepared: (id) => set((s) => ({ prepared: s.prepared.filter((p) => p.id !== id) })),
+
+      /* ---------- 既存アカウントへのレシピ追加（かんたんレシピ・手軽な作り方） ---------- */
+      ensureLibrary: () => {
+        const s = get()
+        const seed = buildSeedRecipes()
+        const recipes = { ...s.recipes }
+        let added = 0
+        let changed = false
+        for (const r of seed) {
+          const cur = recipes[r.id]
+          if (!cur) {
+            if (r.tags.includes('かんたん')) {
+              recipes[r.id] = { ...r, color: r.color }
+              added++
+              changed = true
+            }
+            continue
+          }
+          // ユーザーの編集は残し、足りない項目（調理法・手軽な作り方）だけ補う
+          if ((!cur.method && r.method) || (!cur.easy && r.easy)) {
+            recipes[r.id] = { ...cur, method: cur.method ?? r.method, ...(cur.easy || !r.easy ? {} : { easy: r.easy }) }
+            changed = true
+          }
+        }
+        if (changed) set({ recipes })
+        return added
+      },
 
       /* ---------- 自分の商品 ---------- */
       saveProduct: (p) =>

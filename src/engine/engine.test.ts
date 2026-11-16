@@ -125,3 +125,29 @@ describe('昼食候補を観点ごとに複数件', () => {
     expect(suggestLunch(SEVEN_PRODUCTS, 600, 2400)).toHaveLength(3)
   })
 })
+
+describe('かんたん手順', () => {
+  it('全レシピで2〜6行・欠けた文字列なし、調味料は大さじ表記', async () => {
+    const { buildSeedRecipes } = await import('../data/recipes')
+    const { easyGuide, measure } = await import('../services/ai/easy')
+    for (const r of buildSeedRecipes()) {
+      const g = easyGuide(r)
+      expect(g.steps.length, r.name).toBeGreaterThanOrEqual(2)
+      expect(g.steps.length, r.name).toBeLessThanOrEqual(6)
+      for (const st of g.steps) expect(st, r.name).not.toMatch(/undefined|NaN|null|、、|をを/)
+      expect(g.minutes).toBeGreaterThan(0)
+    }
+    expect(measure({ ingredientId: 'soy', amount: 15 })).toBe('大さじ1')
+    expect(measure({ ingredientId: 'soy', amount: 5 })).toBe('小さじ1')
+    expect(measure({ ingredientId: 'sugar', amount: 3 })).toBe('小さじ1')
+    expect(measure({ ingredientId: 'pepper', amount: 0.1 })).toBe('少々')
+    expect(measure({ ingredientId: 'garlic', amount: 2 })).toBe('チューブ4cm')
+  })
+  it('かんたんレシピはレンジかフライパン1つ', async () => {
+    const { buildSeedRecipes } = await import('../data/recipes')
+    const { easyGuide } = await import('../services/ai/easy')
+    const ez = buildSeedRecipes().filter((r) => r.tags.includes('かんたん'))
+    expect(ez.length).toBe(10)
+    for (const r of ez) expect(easyGuide(r).style.some((x) => /レンジだけ|フライパン1つ|鍋1つ/.test(x)), r.name).toBe(true)
+  })
+})

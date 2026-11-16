@@ -1,4 +1,4 @@
-import { AlertTriangle, ChevronDown, ChevronUp, Flame, Hand, Pencil, Plus, ShieldAlert, Star, Thermometer, Trash2 } from 'lucide-react'
+import { AlertTriangle, ChevronDown, ChevronUp, Flame, Hand, Lightbulb, Pencil, Plus, ShieldAlert, Star, Thermometer, Timer, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Page } from '../components/layout/Page'
@@ -7,8 +7,9 @@ import { Empty, Field, inputCls, Stepper, Tag } from '../components/ui/bits'
 import { toast } from '../components/ui/Toast'
 import { INGREDIENT_MAP, INGREDIENTS } from '../data/ingredients'
 import { recipeCost, recipeNutrition, recipeTimes } from '../engine/nutrition'
-import { cx, qty, r1, spoon, yen } from '../lib/format'
+import { cx, qty, r1, yen } from '../lib/format'
 import { useStore } from '../store/useStore'
+import { easyGuide, measure } from '../services/ai/easy'
 import type { FreezeFit, Recipe, RecipeStep, Role, StepKind } from '../types'
 
 export const KIND_LABEL: Record<StepKind, string> = { wash: '洗う', cut: '切る', raw: '生肉・生魚', measure: '計量', heat: '加熱', simmer: '加熱（放置可）', rest: '置く', cool: '冷却', pack: '保存', plate: '仕上げ', clean: '洗浄' }
@@ -29,7 +30,8 @@ export default function RecipeDetail() {
 
   const n = recipeNutrition(recipe)
   const t = recipeTimes(recipe)
-  const sourceLabel = recipe.source === 'ai-detailed' ? 'AI提案（詳細レシピ）' : recipe.source === 'ai-template' ? 'AI生成（ルールベース）' : recipe.source === 'ai-llm' ? 'AI生成（Workers AI）' : '手動登録'
+  const ez = easyGuide(recipe)
+  const sourceLabel = recipe.tags.includes('かんたん') && recipe.source === 'ai-template' ? 'かんたんレシピ' : recipe.source === 'ai-detailed' ? 'AI提案（詳細レシピ）' : recipe.source === 'ai-template' ? 'AI生成（ルールベース）' : recipe.source === 'ai-llm' ? 'AI生成（Workers AI）' : '手動登録'
   return (
     <Page
       title={recipe.name}
@@ -50,6 +52,23 @@ export default function RecipeDetail() {
         <button onClick={() => toggle(recipe.id, 'canMake')} aria-pressed={recipe.canMake} className={cx('press inline-flex h-6 items-center rounded-full px-2 text-[12px] font-semibold cursor-pointer', recipe.canMake ? 'bg-basil-soft text-basil-ink' : 'bg-sunken text-ink-2')}>{recipe.canMake ? '作れる料理' : '作れる料理に追加'}</button>
         {recipe.tags.map((x) => <Tag key={x}>{x}</Tag>)}
       </div>
+
+      <section className="surface mb-6 overflow-hidden" aria-labelledby="easy-h">
+        <div className="flex flex-wrap items-center gap-2 border-b border-line bg-basil-soft/60 px-4 py-3">
+          <h2 id="easy-h" className="mr-auto text-[17px] font-bold text-basil-ink">かんたん手順</h2>
+          <span className="num inline-flex items-center gap-1 text-[14px] font-semibold text-basil-ink"><Timer size={15} aria-hidden />約{ez.minutes}分</span>
+          {ez.style.filter((x) => !/分$/.test(x)).map((x) => <Tag key={x} tone="basil">{x}</Tag>)}
+        </div>
+        <ol className="divide-y divide-line">
+          {ez.steps.map((st, i) => (
+            <li key={i} className="flex gap-3 px-4 py-3.5">
+              <span className="num flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-basil text-[14px] font-bold text-white">{i + 1}</span>
+              <p className="text-[16px] leading-relaxed">{st}</p>
+            </li>
+          ))}
+        </ol>
+        {ez.point && <p className="flex items-start gap-2 border-t border-line bg-amber-soft/60 px-4 py-3 text-[14px] leading-relaxed text-ink"><Lightbulb size={16} className="mt-0.5 shrink-0 text-amber" aria-hidden /><span><span className="font-semibold">コツ：</span>{ez.point}</span></p>}
+      </section>
 
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
         <div>
@@ -77,8 +96,8 @@ export default function RecipeDetail() {
                       {(i.cut || i.note) && <span className="block text-[12px] text-ink-3">{[i.cut, i.note].filter(Boolean).join('・')}</span>}
                     </span>
                     <span className="num text-right text-[15px]">
-                      {qty(a, ing?.unit ?? 'g')}
-                      {ing?.staple && ing.unit === 'ml' && <span className="block text-[11px] text-ink-3">{spoon(a)}</span>}
+                      {ing?.staple ? measure({ ingredientId: i.ingredientId, amount: a }) : qty(a, ing?.unit ?? 'g')}
+                      {ing?.staple && <span className="block text-[11px] text-ink-3">{qty(a, ing.unit ?? 'g')}</span>}
                     </span>
                   </li>
                 )
@@ -115,8 +134,12 @@ export default function RecipeDetail() {
           </section>
         </div>
 
-        <section className="mb-6">
-          <h2 className="mb-2 px-1 text-[17px] font-bold">工程<span className="num ml-2 text-[14px] font-normal text-ink-3">{recipe.steps.length}</span></h2>
+        <details className="group mb-6">
+          <summary className="press mb-2 flex cursor-pointer list-none items-center gap-2 rounded-[12px] px-1 py-2 text-[17px] font-bold">
+            <ChevronDown size={18} className="transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none" aria-hidden />
+            一括調理用の詳しい工程<span className="num text-[14px] font-normal text-ink-3">{recipe.steps.length}</span>
+            <span className="ml-auto text-[12px] font-normal text-ink-3">器具・温度・順番</span>
+          </summary>
           <ol className="space-y-2">
             {recipe.steps.map((s, i) => (
               <li key={s.id} className={cx('surface flex gap-3 p-4', s.kind === 'raw' && 'ring-1 ring-raw/25')}>
@@ -137,7 +160,7 @@ export default function RecipeDetail() {
               </li>
             ))}
           </ol>
-        </section>
+        </details>
       </div>
       {recipe.source === 'user' || recipe.needsReview ? (
         <Button variant="danger" size="sm" icon={<Trash2 size={15} />} className="mb-8" onClick={() => { const r = del(recipe.id); if (r.ok) { toast('レシピを削除しました'); nav('/recipes') } else toast(r.message, 'error') }}>このレシピを削除</Button>

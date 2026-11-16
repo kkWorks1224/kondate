@@ -3,6 +3,8 @@ import { AlertCircle, ChefHat } from 'lucide-react'
 import { useEffect, type ReactNode } from 'react'
 import { Skeleton } from '../../components/ui/bits'
 import { boot, useCloud } from '../../services/cloud'
+import { useStore } from '../../store/useStore'
+import { toast } from '../../components/ui/Toast'
 
 /** ログインと初回同期が済むまで、全画面スケルトンかログイン画面を出す */
 export function AuthGate({ children }: { children: ReactNode }) {
@@ -12,6 +14,11 @@ export function AuthGate({ children }: { children: ReactNode }) {
   }, [])
   useEffect(() => {
     if (phase !== 'checking') document.getElementById('boot')?.remove()
+    // ログイン後、新しく追加したレシピ（かんたんレシピ）を既存アカウントにも届ける
+    if (phase === 'ready') {
+      const n = useStore.getState().ensureLibrary()
+      if (n) setTimeout(() => toast(`かんたんレシピを${n}品追加しました`, 'ok'), 600)
+    }
   }, [phase])
   if (phase === 'signedOut') return <Login />
   if (phase !== 'ready') return <AppSkeleton />

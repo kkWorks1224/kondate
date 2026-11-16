@@ -5,7 +5,8 @@ const AT = new Date('2026-11-14T09:00:00+09:00').toISOString()
 
 /* ---------- 詳細サンプルレシピ（AI提案として登録・編集可能） ---------- */
 const shogayaki: Recipe = {
-  id: 'shogayaki', name: '生姜焼き', subtitle: '豚ロース・玉ねぎ・千切りキャベツ', role: 'main',
+  id: 'shogayaki', name: '生姜焼き', subtitle: '豚ロース・玉ねぎ・千切りキャベツ', role: 'main', method: 'stirfry',
+  easy: { style: ['フライパン1つ'], steps: ['玉ねぎは薄切り、キャベツは千切り（市販の千切りキャベツでもOK）。', '醤油 大さじ1・みりん 大さじ1・酒 大さじ1・しょうがチューブ4cmを混ぜてたれを作る。', 'フライパンに油 小さじ1を熱し、豚肉を広げて両面焼く。玉ねぎも加えて炒める。', 'たれを入れて、照りが出るまで絡めたら完成。キャベツを添える。'], point: '肉は片栗粉を薄くまぶしてから焼くと、たれがよく絡んで冷めてもやわらかい。' },
   canMake: true, liked: true, isNew: false, starred: true, source: 'ai-detailed',
   ingredients: [
     { ingredientId: 'pork_loin', amount: 120, cut: '筋切り' },
@@ -35,7 +36,8 @@ const shogayaki: Recipe = {
 }
 
 const teriyaki: Recipe = {
-  id: 'teriyaki', name: '鶏の照り焼き', subtitle: '鶏もも・ブロッコリー添え', role: 'main',
+  id: 'teriyaki', name: '鶏の照り焼き', subtitle: '鶏もも・ブロッコリー添え', role: 'main', method: 'stirfry',
+  easy: { style: ['フライパン1つ'], steps: ['鶏もも肉は厚いところを開いて、皮目にフォークで穴をあける。', 'フライパンに皮目を下にして入れ、中火で6分焼く（油はひかなくてOK）。', '裏返して蓋をし、弱火で5分。出た脂はキッチンペーパーで拭く。', '醤油 大さじ1・みりん 大さじ1・砂糖 小さじ1を入れて煮絡め、照りが出たら完成。'], point: 'ブロッコリーはレンジ600Wで1分半加熱して添えるだけ。' },
   canMake: true, liked: true, isNew: false, starred: false, source: 'ai-detailed',
   ingredients: [
     { ingredientId: 'chicken_thigh', amount: 150, cut: '筋と余分な脂を取る' },
@@ -64,7 +66,8 @@ const teriyaki: Recipe = {
 }
 
 const butakimchi: Recipe = {
-  id: 'butakimchi', name: '豚キムチ', subtitle: '豚バラ・キムチ・玉ねぎ・長ねぎ', role: 'main',
+  id: 'butakimchi', name: '豚キムチ', subtitle: '豚バラ・キムチ・玉ねぎ・長ねぎ', role: 'main', method: 'stirfry',
+  easy: { style: ['フライパン1つ', '包丁ほぼいらず'], steps: ['豚バラ肉はキッチンばさみで切る。玉ねぎは薄切り、長ねぎは斜め切り。', 'フライパンにごま油 小さじ1を熱し、豚肉をカリッとするまで炒める。', '玉ねぎを加えてしんなりしたら、キムチと長ねぎを入れて炒める。', '醤油 小さじ1で味をととのえたら完成。'], point: 'キムチは最後に入れると酸味と食感が残る。' },
   canMake: true, liked: true, isNew: false, starred: false, source: 'ai-detailed',
   ingredients: [
     { ingredientId: 'pork_belly', amount: 90, cut: 'はさみで切る', note: '4cm幅' },
@@ -133,7 +136,32 @@ export const NEW_DEFS: RecipeDef[] = [
   { id: 'napa_soup', name: '白菜と卵のスープ', role: 'soup', method: 'soup', items: [['napa', 60, 'ざく切り'], ['egg', 0.5], ['leek', 10, '斜め切り']], seasoning: [['torigara', 2], ['salt', 0.3]], isNew: true, freeze: 'ng', fridgeDays: 2, tags: ['在庫活用'] },
 ]
 
-export const RECIPE_LIBRARY: RecipeDef[] = [...CAN_MAKE_DEFS, ...LIKED_DEFS, ...NEW_DEFS]
+
+/* ---------- かんたんレシピ（材料少なめ・レンジかフライパン1つ・大さじで量れる） ---------- */
+export const EASY_DEFS: RecipeDef[] = [
+  { id: 'ez_negishio', name: '鶏むねのレンジねぎ塩蒸し', subtitle: 'レンジ5分・しっとり', role: 'main', method: 'renge', items: [['chicken_breast', 120, 'そぎ切り'], ['leek', 30, '小口切り']], seasoning: [['torigara', 3], ['sake', 15], ['sesame_oil', 5], ['garlic', 1]], freeze: 'good', fridgeDays: 3, tags: ['かんたん', 'レンジだけ', '高たんぱく'],
+    easy: { minutes: 10, style: ['レンジだけ', '材料2つ', '洗い物少なめ'], steps: ['鶏むね肉は1cm厚さのそぎ切り、長ねぎは小口切りにする。', '耐熱容器に全部入れ、鶏がらスープの素 小さじ1・酒 大さじ1・ごま油 小さじ1・にんにくチューブ2cmを加えてもみ込む。', 'ふんわりラップをして600Wで5分。そのまま2分おいたら完成。'], point: '加熱後すぐ切らずに2分おくと、余熱でしっとり仕上がる。赤いところがあれば30秒追加。' } },
+  { id: 'ez_cabbage', name: 'やみつきキャベツ', subtitle: 'レンジ2分の副菜', role: 'side', method: 'renge', items: [['cabbage', 120, 'ざく切り']], seasoning: [['torigara', 2], ['sesame_oil', 5], ['garlic', 1]], freeze: 'ng', fridgeDays: 2, tags: ['かんたん', 'レンジだけ'],
+    easy: { minutes: 5, style: ['レンジだけ', '材料1つ', '5分'], steps: ['キャベツを手でちぎる（包丁いらず）。', '耐熱容器に入れてラップをし、600Wで2分。', '水気を切って、鶏がらスープの素 小さじ1/2・ごま油 小さじ1・にんにくチューブ2cmで和えたら完成。'], point: '白ごまや塩昆布があれば足すとさらにおいしい。' } },
+  { id: 'ez_moyashibuta', name: '豚もやしのレンジ蒸し 甘酢だれ', subtitle: '安い・早い・たんぱく質も', role: 'main', method: 'renge', items: [['pork_koma', 100, 'はさみで切る'], ['moyashi', 150]], seasoning: [['soy', 15], ['vinegar', 15], ['sugar', 4], ['sesame_oil', 3]], freeze: 'ng', fridgeDays: 2, tags: ['かんたん', 'レンジだけ', '節約'],
+    easy: { minutes: 10, style: ['レンジだけ', '材料2つ', '包丁いらず'], steps: ['耐熱容器にもやしを敷き、豚こま肉を広げてのせる（大きければキッチンばさみで切る）。', 'ふんわりラップをして600Wで5分。肉の色が全部変わればOK。', '醤油 大さじ1・酢 大さじ1・砂糖 小さじ1・ごま油 小さじ1/2を混ぜたたれをかけて完成。'], point: '出てきた水分は捨ててからたれをかけると味がぼやけない。' } },
+  { id: 'ez_hakusai', name: '豚バラ白菜のレンジ重ね蒸し', subtitle: '白だしで味が決まる', role: 'main', method: 'renge', items: [['pork_belly', 80, '4cm幅'], ['napa', 150, 'ざく切り']], seasoning: [['shirodashi', 15], ['sake', 15]], freeze: 'ok', fridgeDays: 2, tags: ['かんたん', 'レンジだけ'],
+    easy: { minutes: 12, style: ['レンジだけ', '材料2つ'], steps: ['白菜はざく切り、豚バラ肉は4cm幅に切る。', '耐熱容器に白菜と豚肉を交互に重ね、白だし 大さじ1・酒 大さじ1を回しかける。', 'ふんわりラップをして600Wで6分。肉に火が通ったら完成。'], point: 'ポン酢やゆずこしょうをつけても合う。' } },
+  { id: 'ez_salmon', name: '鮭ときのこのレンジ蒸し', subtitle: '魚焼きグリル不要', role: 'main', method: 'renge', items: [['salmon', 100], ['kinoko_mix', 60, '石づきを取ってほぐす'], ['onion', 30, '薄切り']], seasoning: [['soy', 8], ['sake', 15], ['olive_oil', 5]], freeze: 'ok', fridgeDays: 2, tags: ['かんたん', 'レンジだけ', '魚'],
+    easy: { minutes: 10, style: ['レンジだけ', '材料3つ'], steps: ['玉ねぎは薄切り、きのこはほぐす。', '耐熱皿に玉ねぎ・きのこを敷いて鮭をのせ、酒 大さじ1・醤油 小さじ1.5・オリーブオイル 小さじ1をかける。', 'ふんわりラップをして600Wで4分。鮭の中まで色が変わったら完成。'], point: 'バターがあれば小さじ1のせると、ぐっと洋風に。' } },
+  { id: 'ez_eggtomato', name: '卵とトマトの中華炒め', subtitle: 'フライパン1つで7分', role: 'main', method: 'stirfry', egg: true, items: [['egg', 2], ['tomato', 120, 'くし切り']], seasoning: [['torigara', 2], ['sugar', 2], ['oil', 8]], freeze: 'ng', fridgeDays: 1, tags: ['かんたん', 'フライパン1つ', '当日調理向き'],
+    easy: { minutes: 7, style: ['フライパン1つ', '材料2つ', '7分'], steps: ['トマトはくし切りにし、卵は溶いておく。', 'フライパンに油 大さじ1/2を熱し、卵を大きく混ぜて半熟で取り出す。', '同じフライパンでトマトを30秒炒め、鶏がらスープの素 小さじ1/2・砂糖 小さじ1/2を加える。', '卵を戻してさっと混ぜたら完成。'], point: '卵は混ぜすぎないのがふわふわのコツ。' } },
+  { id: 'ez_misoitame', name: '豚キャベツのみそ炒め', subtitle: 'ご飯がすすむ甘みそ', role: 'main', method: 'stirfry', items: [['pork_koma', 100], ['cabbage', 100, 'ざく切り'], ['piman', 30, '乱切り']], seasoning: [['miso', 15], ['mirin', 15], ['sugar', 3], ['oil', 4]], freeze: 'ok', fridgeDays: 2, tags: ['かんたん', 'フライパン1つ'],
+    easy: { minutes: 10, style: ['フライパン1つ', '材料3つ'], steps: ['キャベツはざく切り、ピーマンは乱切りにする。', 'フライパンに油 小さじ1を熱し、豚こま肉を色が変わるまで炒める。', '野菜を加えて1〜2分炒め、味噌 大さじ1弱・みりん 大さじ1・砂糖 小さじ1を混ぜたものを加えて絡めたら完成。'], point: '合わせ調味料は先に混ぜておくと焦げにくい。' } },
+  { id: 'ez_garlicchicken', name: '鶏ももとブロッコリーのにんにく焼き', subtitle: '塩こしょうだけで決まる', role: 'main', method: 'stirfry', items: [['chicken_thigh', 130, '一口大'], ['broccoli', 60, '小房']], seasoning: [['garlic', 2], ['salt', 1], ['pepper', 0.1], ['oil', 4]], freeze: 'good', fridgeDays: 3, tags: ['かんたん', 'フライパン1つ', '高たんぱく'],
+    easy: { minutes: 12, style: ['フライパン1つ', '材料2つ'], steps: ['鶏もも肉は一口大に、ブロッコリーは小房に分ける。', 'フライパンに油 小さじ1をひき、鶏肉を皮目から中火で5分焼く。', '裏返してブロッコリーを入れ、蓋をして弱火で4分蒸し焼きにする。', '塩 ひとつまみ・こしょう 少々・にんにくチューブ4cmで味をつけたら完成。'], point: '皮目を動かさずに焼くと、パリッと香ばしくなる。' } },
+  { id: 'ez_mapoeggplant', name: 'レンジ麻婆なす', subtitle: '炒めずにとろとろ', role: 'main', method: 'renge', items: [['eggplant', 120, '乱切り'], ['pork_minced', 60]], seasoning: [['tobanjan', 3], ['miso', 6], ['sugar', 3], ['soy', 5], ['katakuriko', 3], ['sesame_oil', 3]], freeze: 'ok', fridgeDays: 2, tags: ['かんたん', 'レンジだけ'],
+    easy: { minutes: 12, style: ['レンジだけ', '材料2つ'], steps: ['なすは乱切りにする。', '耐熱容器にひき肉・豆板醤 小さじ1/2・味噌 小さじ1・砂糖 小さじ1・醤油 小さじ1・片栗粉 小さじ1・水 大さじ3を入れてよく混ぜ、なすをのせる。', 'ふんわりラップをして600Wで6分。取り出してよく混ぜ、ひき肉に火が通っていれば完成（ごま油 小さじ1/2をたらす）。'], point: 'ひき肉の赤い部分が残っていたら、混ぜてさらに1分加熱。' } },
+  { id: 'ez_komatsuna', name: '小松菜と油揚げのさっと煮', subtitle: 'めんつゆだけで5分', role: 'side', method: 'nimono', items: [['komatsuna', 100, '4cm幅'], ['aburaage', 20, '短冊切り']], seasoning: [['mentsuyu', 15]], freeze: 'ok', fridgeDays: 3, tags: ['かんたん', '鍋1つ'],
+    easy: { minutes: 7, style: ['鍋1つ', '材料2つ', '7分'], steps: ['小松菜は4cm幅、油揚げは細切りにする。', '小鍋に水 100ml・めんつゆ（3倍）大さじ1を入れて煮立てる。', '油揚げと小松菜を入れて2分煮たら完成。'], point: '作り置きにも向く。汁ごと保存すると味がなじむ。' } },
+]
+
+export const RECIPE_LIBRARY: RecipeDef[] = [...CAN_MAKE_DEFS, ...LIKED_DEFS, ...NEW_DEFS, ...EASY_DEFS]
 
 export function buildSeedRecipes(): Recipe[] {
   const generated = RECIPE_LIBRARY.map((d, i) => buildRecipe(d, i + 3))
