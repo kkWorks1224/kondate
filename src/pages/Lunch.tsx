@@ -66,9 +66,9 @@ export default function Lunch() {
       </div>
       <Segmented label="候補の観点" className="mb-3" value={mode} onChange={(v) => { setMode(v); setLimit(6) }} options={[
         { value: 'all', label: 'すべて' },
-        { value: 'balance', label: 'バランス', count: byMode('balance').length },
-        { value: 'protein', label: '高たんぱく', count: byMode('protein').length },
-        { value: 'budget', label: '節約', count: byMode('budget').length },
+        { value: 'balance', label: 'バランス' },
+        { value: 'protein', label: '高たんぱく' },
+        { value: 'budget', label: '節約' },
       ]} />
       <motion.div layout className="mb-3 grid gap-3 md:grid-cols-3">
         <AnimatePresence initial={false} mode="popLayout">
