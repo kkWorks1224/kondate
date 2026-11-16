@@ -125,7 +125,7 @@ export function planIssues(plan: WeekPlan, recipes: Record<string, Recipe>, maxR
       break
     }
   }
-  const empty = plan.days.filter((d) => !d.dinner.main).length
+  const empty = plan.days.filter((d) => !d.dinner.main && !d.dinner.skip).length
   if (empty) issues.push(`主菜が未設定の日が${empty}日あります`)
   return issues
 }

@@ -69,6 +69,16 @@ function TodayDinner() {
       </section>
     )
   }
+  if (day.dinner.skip) {
+    return (
+      <section className="surface mb-6 p-5" aria-labelledby="today-dinner">
+        <h2 id="today-dinner" className="text-[15px] font-semibold text-ink-2">今日の夕食</h2>
+        <p className="mt-2 text-[22px] font-bold">今日は夕食なし</p>
+        <p className="mt-1 text-[14px] text-ink-2">{day.dinner.note ?? '不要'}。献立の画面で「戻す」を押すと元の料理に戻せます。</p>
+        <Button variant="tinted" className="mt-3" onClick={() => nav('/plan')}>週間献立へ</Button>
+      </section>
+    )
+  }
   const main = day.dinner.main ? recipes[day.dinner.main] : undefined
   const side = day.dinner.side ? recipes[day.dinner.side] : undefined
   const stockOf = (id?: string) => prepared.filter((p) => p.recipeId === id && p.servings > 0).sort((a, b) => (a.location === 'fridge' ? -1 : 1) - (b.location === 'fridge' ? -1 : 1))[0]

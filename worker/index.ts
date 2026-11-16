@@ -395,6 +395,67 @@ app.post("/api/ai/plan-advice", async (c) => {
   }
 });
 
+// 文章の指示で献立を組み直す。AI は「操作」の JSON だけを返し、検証と適用はアプリ側で行う
+app.post("/api/ai/plan-edit", async (c) => {
+  const body = await c.req.json<{ instruction?: string; context?: any }>();
+  const instruction = clean(body.instruction, 300);
+  const ctx = body.context;
+  if (!instruction || !ctx || !Array.isArray(ctx.days) || !Array.isArray(ctx.candidates)) return c.json({ error: "bad_request" }, 400);
+  const blocked = await aiGuard(c);
+  if (blocked) return blocked;
+  const days = (ctx.days as any[]).slice(0, 7).map((d) => `${d.i}: ${clean(d.date, 10)}（${clean(d.wd, 1)}曜${d.rel ? `・${clean(d.rel, 4)}` : ""}） 主菜=${d.skip ? "なし（不要）" : clean(d.main, 40) || "未設定"} 副菜=${clean(d.side, 40) || "なし"} ${d.mode === "fresh" ? "当日調理" : "作り置き"}`);
+  const cands = (ctx.candidates as any[]).slice(0, 80).map((r) => `${clean(r.id, 40)}｜${clean(r.name, 40)}｜${r.role === "side" ? "副菜" : "主菜"}${Array.isArray(r.tags) && r.tags.length ? `｜${r.tags.slice(0, 4).map((t: unknown) => clean(t, 12)).join("・")}` : ""}${r.freeze === "ng" ? "｜冷凍不向き" : ""}`);
+  const system = [
+    "あなたは週間献立アプリの編集アシスタントです。ユーザーの指示を、献立を変更する操作の配列に変換してください。",
+    "入力は音声入力のため誤変換を含むことがあります。文脈から意図を汲んでください。",
+    "使える操作：",
+    '- {"op":"skip","days":[日番号],"note":"外食など短い理由"} その日の夕食を不要にする',
+    '- {"op":"unskip","days":[日番号]} 不要にした日を元に戻す',
+    '- {"op":"keepDays","count":N} 最初のN日分だけ残し、残りを不要にする',
+    '- {"op":"set","day":日番号,"slot":"main"|"side","recipeId":"候補のid"} 料理を差し替える（副菜をなくすときは slot=side, recipeId=null）',
+    '- {"op":"mode","days":[日番号],"mode":"batch"|"fresh"} 作り置き／当日調理に切り替える',
+    '- {"op":"swap","a":日番号,"b":日番号} 2日の料理を入れ替える',
+    "日番号は献立一覧の先頭の番号（0〜6）。recipeId は必ず候補一覧の id から選ぶ。主菜(main)には主菜の候補、副菜(side)には副菜の候補だけを使う。",
+    "料理を差し替えるときは、同じ料理が3日以上続かないようにし、指示の意図（例：レンジで作れる、魚にする、安く）に合う候補をタグや名前から選ぶ。",
+    "指示に関係ない日は変更しない。実行できない指示なら ops は空にし、message で理由を伝える。",
+    "message は変更内容を利用者に伝える50字以内の日本語。",
+  ].join("\n");
+  const user = [`今日: ${clean(ctx.today, 10)}`, "献立:", ...days, "候補（id｜名前｜種類｜タグ）:", ...cands, `指示: ${instruction}`].join("\n");
+  const schema = {
+    type: "object",
+    properties: {
+      ops: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            op: { type: "string", enum: ["skip", "unskip", "keepDays", "set", "mode", "swap"] },
+            days: { type: "array", items: { type: "integer" } },
+            day: { type: "integer" },
+            slot: { type: "string", enum: ["main", "side"] },
+            recipeId: { type: ["string", "null"] },
+            mode: { type: "string", enum: ["batch", "fresh"] },
+            count: { type: "integer" },
+            a: { type: "integer" },
+            b: { type: "integer" },
+            note: { type: "string" },
+          },
+          required: ["op"],
+        },
+      },
+      message: { type: "string" },
+    },
+    required: ["ops", "message"],
+  };
+  try {
+    const out = await runJSON(c.env, system, user, schema, 700);
+    return c.json({ ops: Array.isArray(out?.ops) ? out.ops.slice(0, 20) : [], message: clean(out?.message, 120) });
+  } catch (e) {
+    console.error("ai plan-edit failed", e);
+    return c.json({ error: "ai_failed" }, 502);
+  }
+});
+
 // ---------- 商品（バーコード） ----------
 // JAN コードから Open Food Facts（誰でも編集できる公開の食品データベース）を引く。
 // 見つかった値は「参考値」として登録画面に入れ、ユーザーが確認・修正してから保存する。

@@ -176,6 +176,12 @@ export interface DinnerSlot {
   main?: ID
   side?: ID
   mode: CookMode
+  /** この日は夕食を用意しない（外食・不要など） */
+  skip?: boolean
+  /** 不要にした理由（例：外食） */
+  note?: string
+  /** 不要にする前の料理（戻すときに使う） */
+  prev?: { main?: ID; side?: ID }
 }
 export interface DayPlan {
   date: ISODate

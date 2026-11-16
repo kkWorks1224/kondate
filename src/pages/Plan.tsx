@@ -15,6 +15,7 @@ import { cx, yen } from '../lib/format'
 import { ai } from '../services/ai'
 import { planColors } from '../lib/colors'
 import { usePlanDerived } from '../store/derived'
+import { PlanEdit } from '../features/plan/PlanEdit'
 import { useStore } from '../store/useStore'
 import type { DayPlan, Recipe } from '../types'
 
@@ -88,6 +89,7 @@ export default function Plan() {
 
       {plan && derived && (
         <>
+          <PlanEdit />
           {/* 試算 */}
           <div className="mb-5 grid grid-cols-3 gap-2 sm:gap-3">
             <Stat label="推定食費" value={yen(derived.cost)} sub={`予算 ${yen(budget)}`} warn={derived.cost > budget} />
@@ -116,7 +118,7 @@ export default function Plan() {
               {plan.status === 'draft' ? (
                 <>
                   <p className="min-w-0 flex-1 px-2 text-[13px] text-ink-2">確定すると買い物リストと一括調理の工程を作ります</p>
-                  <Button onClick={onConfirm} icon={<Check size={17} />} disabled={plan.days.some((d) => !d.dinner.main)}>献立を確定</Button>
+                  <Button onClick={onConfirm} icon={<Check size={17} />} disabled={plan.days.some((d) => !d.dinner.main && !d.dinner.skip)}>献立を確定</Button>
                 </>
               ) : (
                 <>
@@ -156,6 +158,7 @@ function DayRow({ src, pos, day, onPick, onCommit, order }: { src: number; pos: 
   const plan = useStore((s) => s.plan)!
   const setMode = useStore((s) => s.setMode)
   const reorder = useStore((s) => s.reorderDays)
+  const applyEdit = useStore((s) => s.applyPlanEdit)
   const main = day.dinner.main ? recipes[day.dinner.main] : undefined
   const side = day.dinner.side ? recipes[day.dinner.side] : undefined
   const colors = planColors(plan)
@@ -178,6 +181,15 @@ function DayRow({ src, pos, day, onPick, onCommit, order }: { src: number; pos: 
         <span className="text-[20px] leading-none font-bold">{weekday(day.date)}</span>
         <span className={cx('num mt-1 text-[12px]', isToday ? 'text-white/85' : 'text-ink-3')}>{fmtMD(day.date)}</span>
       </div>
+      {day.dinner.skip ? (
+        <div className="flex min-w-0 flex-1 items-center gap-3 py-3 pr-2 pl-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[16px] font-semibold text-ink-3">夕食なし</p>
+            <p className="text-[13px] text-ink-3">{day.dinner.note ?? '不要'}{day.dinner.prev?.main ? `（元：${recipes[day.dinner.prev.main]?.name ?? ''}）` : ''}</p>
+          </div>
+          <Button size="sm" variant="secondary" onClick={() => { const ch = applyEdit([{ op: 'unskip', days: [pos] }]); if (ch.length) toast(`${weekday(day.date)}曜の夕食を戻しました`, 'ok') }}>戻す</Button>
+        </div>
+      ) : (
       <div className="min-w-0 flex-1 py-2.5 pr-1 pl-3">
         <button onClick={() => onPick('main')} className="press -ml-1.5 flex w-full items-center gap-2 rounded-lg px-1.5 py-1 text-left hover:bg-sunken cursor-pointer">
           {main && <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: colors[main.id] ?? main.color }} aria-hidden />}
@@ -199,6 +211,7 @@ function DayRow({ src, pos, day, onPick, onCommit, order }: { src: number; pos: 
           {main && <span className="num text-[12px] text-ink-3">{Math.round(kcal)}kcal・P{Math.round(protein)}g</span>}
         </div>
       </div>
+      )}
       <div className="flex shrink-0 flex-col items-center justify-center pr-1">
         <button className="press flex h-9 w-9 items-center justify-center rounded-full text-ink-3 hover:bg-sunken disabled:opacity-20 cursor-pointer" aria-label={`${weekday(day.date)}曜の料理を前日と入れ替え`} disabled={pos === 0} onClick={() => swap(-1)}><ArrowUp size={16} /></button>
         <span className="flex h-9 w-9 cursor-grab touch-none items-center justify-center rounded-full text-ink-3 hover:bg-sunken active:cursor-grabbing" onPointerDown={(e) => controls.start(e)} aria-hidden title="ドラッグで移動"><GripVertical size={18} /></span>

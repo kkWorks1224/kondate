@@ -10,6 +10,7 @@ import { planCooking } from '../engine/cookPlanner'
 import { comboNutrients } from '../engine/lunch'
 import { recipeNutrition, sum } from '../engine/nutrition'
 import { batchInputs, buildShopping, dishUses, requirements } from '../engine/planMath'
+import { applyOps, type PlanOp } from '../engine/planEdit'
 import { addDays, diffDays, today, weekStartOf } from '../lib/date'
 import { uid } from '../lib/format'
 import { ai } from '../services/ai'
@@ -54,6 +55,10 @@ interface Actions {
   reorderDays: (order: number[]) => void
   confirmPlan: () => void
   reopenPlan: () => void
+  /** 文章の指示から作った操作をまとめて適用（変更点を返す） */
+  applyPlanEdit: (ops: PlanOp[]) => string[]
+  /** 取り消し用：献立を指定の状態に戻す */
+  restorePlan: (plan: WeekPlan) => void
   // レシピ
   saveRecipe: (r: Recipe) => void
   toggleRecipeFlag: (id: string, flag: 'starred' | 'canMake') => void
@@ -146,7 +151,10 @@ export const useStore = create<Store>()(
         try {
           const t = today()
           const weekStart = weekStartOf(t, s.profile.batchDay)
-          const plan = await ai.proposeWeekPlan({ recipes: Object.values(s.recipes), inventory: s.inventory, profile: s.profile, weekStart, history: s.meals, generation: s.aiGeneration, today: t })
+          let plan = await ai.proposeWeekPlan({ recipes: Object.values(s.recipes), inventory: s.inventory, profile: s.profile, weekStart, history: s.meals, generation: s.aiGeneration, today: t })
+          // 「不要」にしていた日は、作り直しても不要のまま
+          const skipped = (s.plan?.days ?? []).map((d, i) => (d.dinner.skip && s.plan!.weekStart === plan.weekStart ? i : -1)).filter((i) => i >= 0)
+          if (skipped.length) plan = { ...applyOps(plan, [{ op: 'skip', days: skipped, note: s.plan!.days[skipped[0]].dinner.note }], s.recipes).plan, generatedBy: plan.generatedBy, rationale: plan.rationale }
           set((st) => ({ plan, aiGeneration: st.aiGeneration + 1, session: st.session?.status === 'done' ? undefined : st.session }))
           set((st) => recalc(st))
           return { ok: true }
@@ -185,6 +193,14 @@ export const useStore = create<Store>()(
           const plan: WeekPlan = { ...s.plan, status: 'confirmed', confirmedAt: new Date().toISOString() }
           return { plan, ...recalc({ ...s, plan }) }
         }),
+      applyPlanEdit: (ops) => {
+        const s = get()
+        if (!s.plan) return []
+        const { plan, changes } = applyOps(s.plan, ops, s.recipes)
+        if (changes.length) set({ plan, ...recalc({ ...s, plan }) })
+        return changes
+      },
+      restorePlan: (plan) => set((s) => ({ plan, ...recalc({ ...s, plan }) })),
       reopenPlan: () =>
         set((s) => {
           if (!s.plan) return s
